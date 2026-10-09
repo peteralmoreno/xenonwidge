@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>tr('Audio Deck')</title>
+  <link rel="icon" href="resources/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="widget.css" />
+  <script src="app.js" defer="defer"></script>
+</head>
+<body>
+<main class="deck">
+  <header><div class="brand"><img src="resources/icon.svg" alt="" /><h1>Audio Deck</h1></div><button id="settings" aria-label="Connection settings">Connect</button></header>
+  <div id="notice" role="status">Connect your Windows companion to get started.</div>
+  <nav role="tablist" aria-label="Audio view"><button role="tab" id="player-tab" aria-selected="true" aria-controls="player">Player</button><button role="tab" id="mixer-tab" aria-selected="false" aria-controls="mixer">Mixer</button></nav>
+  <section id="player" role="tabpanel" aria-labelledby="player-tab">
+    <label class="source-label">Playing from <select id="players" aria-label="Music player" disabled><option>No media player</option></select></label>
+    <div class="record"><div class="cover"><img id="artwork" alt="Album artwork" hidden /><div id="fallback" aria-hidden="true"><span>♪</span></div></div><div class="track"><h2 id="title">Ready when you are</h2><p id="artist">Open a music app on your PC.</p><div class="transport"><button id="previous" aria-label="Previous track" disabled>⏮</button><button id="playPause" aria-label="Play" disabled>▶</button><button id="next" aria-label="Next track" disabled>⏭</button></div></div></div>
+  </section>
+  <section id="mixer" role="tabpanel" aria-labelledby="mixer-tab" hidden><div class="mixer-heading"><h2>App volumes</h2><span>Default output</span></div><div id="sessions"></div><p id="empty">No apps are using this output.</p></section>
+  <footer><div class="master-label"><div><strong>Master output</strong><p id="device">No output connected</p></div><output id="master-value">—</output></div><div class="volume-controls"><button id="master-mute" aria-label="Mute master" disabled>Mute</button><input id="master-volume" type="range" min="0" max="100" value="0" aria-label="Master volume" disabled /></div></footer>
+  <dialog id="connection"><form id="pair"><h2>Connect to Windows</h2><p>Start Audio Deck Companion, then paste the key from its pairing-key.txt file.</p><label for="key">Pairing key</label><input id="key" type="password" autocomplete="off" spellcheck="false" required minlength="64" maxlength="64" /><p id="pair-error" role="alert"></p><div class="dialog-actions"><button id="cancel" type="button">Close</button><button type="submit" class="accent">Connect</button></div></form></dialog>
+</main>
+</body>
+</html>

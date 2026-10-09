@@ -1,0 +1,13 @@
+{
+  "author":"Xeneonwidge",
+  "id":"com.xeneonwidge.audiodeck",
+  "name":"Audio Deck",
+  "description":"Music playback and Windows application volume mixer. Requires Audio Deck Companion. Medium touch layout.",
+  "version":"0.1.0",
+  "preview_icon":"resources/icon.svg",
+  "min_framework_version":"1.0.0",
+  "min_app_version":"5.47",
+  "os":[{"platform":"windows"}],
+  "supported_devices":[{"type":"dashboard_lcd"}],
+  "interactive":true
+}

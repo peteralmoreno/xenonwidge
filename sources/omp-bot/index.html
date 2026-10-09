@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tr('Bot Ranch')</title>
+<link rel="icon" type="image/svg+xml" href="resources/icon.svg" />
+<link rel="stylesheet" href="widget.css" />
+<script src="world.js" defer="defer"></script>
+<script src="sprites.js" defer="defer"></script>
+<script src="app.js" defer="defer"></script>
+</head>
+<body data-state="offline" data-motion="on">
+<main>
+<header><div class="brand"><img src="resources/icon.svg" alt="" /><h1>Bot Ranch</h1></div><div class="actions"><button id="motion" aria-label="Pause animation">Pause</button><button id="connect" aria-label="Connection settings">Connect</button></div></header>
+<div class="ranch-bar"><span id="population">0 / 4 residents</span><button id="manage">Manage bots</button></div>
+<section id="scene" aria-label="Robot ranch">
+<svg class="landscape" viewBox="0 0 400 260" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true">
+<defs><pattern id="grass" width="32" height="28" patternUnits="userSpaceOnUse"><rect width="32" height="28" fill="#719366"/><path d="M4 8h3V5h2v3h3v2H4zM23 22h3v-3h2v5h-5z" fill="#87a574"/></pattern><pattern id="fence" width="24" height="8" patternUnits="userSpaceOnUse"><path d="M0 2h24v3H0zM3 0h4v8H3z" fill="#c2ae7b"/></pattern></defs>
+<path fill="url(#grass)" d="M0 0h400v260H0z"/><path fill="#a7a477" d="M186 8h28v244h-28zM8 120h384v20H8z"/><path fill="#b7b38b" d="M190 10h20v240h-20zM10 124h380v12H10z"/>
+<path fill="#4b7154" d="M8 8h384v244H8z" fill-opacity=".15"/><path fill="url(#fence)" d="M8 8h384v8H8zM8 244h384v8H8z"/><path fill="#c2ae7b" d="M8 8h5v244H8zM387 8h5v244h-5z"/>
+<g fill="#344f3e"><path d="M21 19h32v17H21zM347 19h32v17h-32zM21 223h32v17H21zM347 223h32v17h-32z"/></g><g fill="#c0be88"><path d="M24 22h26v11H24zM350 22h26v11h-26zM24 226h26v11H24zM350 226h26v11h-26z"/></g>
+<g fill="#526b4b" aria-label="Charging docks"><path d="m37 22-4 6h4l-1 5 6-7h-5l2-4zM363 22l-4 6h4l-1 5 6-7h-5l2-4zM37 226l-4 6h4l-1 5 6-7h-5l2-4zM363 226l-4 6h4l-1 5 6-7h-5l2-4z"/></g>
+<g fill="#537355"><path d="M124 80h38v26h-38zM238 80h38v26h-38zM124 204h38v26h-38zM238 204h38v26h-38z"/></g>
+<g stroke="#655b46" stroke-width="2"><path fill="#dfb67a" d="M130 80h15v15h-15zM146 80h15v15h-15zM137 66h15v15h-15zM242 80h15v15h-15zM258 80h15v15h-15zM249 66h15v15h-15zM130 204h15v15h-15zM146 204h15v15h-15zM137 190h15v15h-15zM242 204h15v15h-15zM258 204h15v15h-15zM249 190h15v15h-15z"/></g>
+<g fill="#466d53"><path d="M16 106h22v16H16zM367 144h16v26h-16z"/></g><g fill="#e3d197"><path d="M22 111h4v4h-4zM374 153h4v4h-4zM104 29h4v4h-4zM310 236h4v4h-4z"/></g></svg>
+<div id="residents"></div><p id="empty">Your ranch is quiet.<br />Add a resident in the companion setup page.</p>
+</section>
+<section class="status" aria-live="polite"><div class="state-line"><span class="light"></span><h2 id="state">Offline</h2><span id="elapsed">—</span></div><p id="detail">Connect the companion to open your ranch.</p><p id="focus-result"></p><button id="companion-view" hidden>Open companion view</button></section>
+<footer><button id="project" aria-label="Terminal details">No terminal selected</button><span>Tap to peek · double-tap to open</span></footer>
+<aside id="peek" role="dialog" aria-label="Conversation peek" hidden><div class="peek-heading"><strong id="peek-name"></strong><button id="peek-close" aria-label="Close peek">×</button></div><p id="peek-state"></p><p id="peek-role"></p><p id="peek-text"></p><button id="peek-open">Open terminal</button></aside>
+<dialog id="pairing"><form id="pair-form"><h2>Connect Bot Ranch</h2><p>Start the companion and paste its pairing key. In iCUE, allow 127.0.0.1 under Settings → Software Settings → Widget Access.</p><label for="key">Pairing key</label><input id="key" type="password" autocomplete="off" spellcheck="false" required minlength="64" maxlength="64" /><p id="pair-error" role="alert"></p><div class="dialog-actions"><button id="close" type="button">Close</button><button type="submit">Connect</button></div></form></dialog>
+<dialog id="management"><h2>Ranch residents</h2><p>Up to four bots. Choose their colors in companion setup.</p><div id="slots"></div><div class="dialog-actions"><button id="manage-close">Done</button></div></dialog>
+<dialog id="terminal-details" aria-label="Terminal details"><h2>Terminal details</h2><p id="full-project"></p><p id="full-status"></p><div class="dialog-actions"><button id="details-close">Close</button></div></dialog>
+</main></body></html>

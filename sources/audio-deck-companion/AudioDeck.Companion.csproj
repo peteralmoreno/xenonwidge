@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>AudioDeck.Companion</AssemblyName>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <AudioRuntimeVersion>9.0.20</AudioRuntimeVersion>
+  </PropertyGroup>
+  <ItemGroup><PackageReference Include="NAudio.Wasapi" Version="2.2.1" /></ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Update="Microsoft.NETCore.App" RuntimeFrameworkVersion="$(AudioRuntimeVersion)" />
+    <FrameworkReference Update="Microsoft.AspNetCore.App" RuntimeFrameworkVersion="$(AudioRuntimeVersion)" />
+  </ItemGroup>
+  <ItemGroup><Content Include="NAudio-LICENSE.txt" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><Content Include="Launch.cmd;launch.sh" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
+  <Target Name="CopyRuntimeNotices" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <Copy SourceFiles="$(NuGetPackageRoot)microsoft.netcore.app.runtime.win-x64/$(AudioRuntimeVersion)/LICENSE.TXT" DestinationFiles="$(PublishDir)DOTNET-LICENSE.txt" />
+    <Copy SourceFiles="$(NuGetPackageRoot)microsoft.netcore.app.runtime.win-x64/$(AudioRuntimeVersion)/THIRD-PARTY-NOTICES.TXT" DestinationFiles="$(PublishDir)DOTNET-THIRD-PARTY-NOTICES.txt" />
+    <Copy SourceFiles="$(NuGetPackageRoot)microsoft.aspnetcore.app.runtime.win-x64/$(AudioRuntimeVersion)/THIRD-PARTY-NOTICES.TXT" DestinationFiles="$(PublishDir)ASPNET-THIRD-PARTY-NOTICES.txt" />
+  </Target>
+</Project>

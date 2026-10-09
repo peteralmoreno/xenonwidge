@@ -1,0 +1,37 @@
+{
+  "name": "xeneon-widget-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs && npm run test:ranch-native && playwright test && dotnet run --project tests/audio-companion -c Release",
+    "test:core": "node --test tests/core.test.cjs",
+    "test:browser": "playwright test",
+    "preview": "node tools/preview.cjs",
+    "validate": "node tools/build.cjs doodle validate",
+    "package": "node tools/build.cjs doodle widget",
+    "validate:audio": "node tools/build.cjs audio validate",
+    "package:audio": "node tools/build.cjs audio widget",
+    "build:companion": "node tools/build.cjs audio companion",
+    "check:companion": "node tools/check-audio-companion.cjs",
+    "validate:omp": "node tools/build.cjs ranch validate",
+    "package:omp": "node tools/build.cjs ranch widget",
+    "start:omp-bridge": "node sources/omp-bot-companion/bridge.mjs",
+    "build": "node tools/build.cjs",
+    "build:doodle": "node tools/build.cjs doodle",
+    "build:audio": "node tools/build.cjs audio",
+    "build:ranch": "node tools/build.cjs ranch",
+    "validate:all": "node tools/build.cjs all validate",
+    "build:ranch-companion": "node tools/build.cjs ranch companion",
+    "test:unit": "node --test tests/*.test.cjs",
+    "test:build": "node --test tests/build.test.cjs",
+    "test:audio": "dotnet run --project tests/audio-companion -c Release",
+    "test:ranch-native": "node --test sources/omp-bot-companion/tests/setup-colors.test.mjs && powershell.exe -NoProfile -NonInteractive -File sources/omp-bot-companion/tests/terminal-arguments.test.ps1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "icuewidget-cli": "0.4.48"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
