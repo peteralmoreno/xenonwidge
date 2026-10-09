@@ -1,11 +1,15 @@
-import http from 'node:http';import {timingSafeEqual} from 'node:crypto';import {STATES} from './state.mjs';
+import http from 'node:http';import {timingSafeEqual,randomUUID} from 'node:crypto';import {STATES} from './state.mjs';
 import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
 import {sanitizePreview} from './preview.mjs';
+import {sanitizeMetadata} from './metadata.mjs';
 const directory=path.dirname(fileURLToPath(import.meta.url));
 const uiRoot=fs.existsSync(path.join(directory,'ui/index.html'))?path.join(directory,'ui'):path.join(directory,'../omp-bot');
-const publicFiles={'/ui/':['index.html','text/html'],'/ui/app.js':['app.js','text/javascript'],'/ui/sprites.js':['sprites.js','text/javascript'],'/ui/world.js':['world.js','text/javascript'],'/ui/widget.css':['widget.css','text/css'],'/ui/resources/icon.svg':['resources/icon.svg','image/svg+xml']};
+const deskRoot=fs.existsSync(path.join(directory,'desk/index.html'))?path.join(directory,'desk'):path.join(directory,'../ranch-desk');
+const deskFiles={'/desk/appearance.js':['appearance.js','text/javascript'],'/desk/':['index.html','text/html'],'/desk/app.js':['app.js','text/javascript'],'/desk/widget.css':['widget.css','text/css'],'/desk/resources/icon.svg':['resources/icon.svg','image/svg+xml']};
+const publicFiles={'/ui/appearance.js':['appearance.js','text/javascript'],'/ui/':['index.html','text/html'],'/ui/app.js':['app.js','text/javascript'],'/ui/sprites.js':['sprites.js','text/javascript'],'/ui/world.js':['world.js','text/javascript'],'/ui/widget.css':['widget.css','text/css'],'/ui/resources/icon.svg':['resources/icon.svg','image/svg+xml']};
 export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,adminKey=null,manager=null}){
- const sessions=new Map(),terminals=new Map(),managedIds=new Set();let focusing=false,lastFocus=-Infinity;
+ const selectionInstance=randomUUID();
+ const sessions=new Map(),terminals=new Map(),managedIds=new Set();let focusing=false,lastFocus=-Infinity,selectedId="",selectionRevision=0;
  const valid=s=>s&&s.version===1&&typeof s.id==='string'&&/^[\w:-]{1,160}$/.test(s.id)&&Number.isSafeInteger(s.sequence)&&s.sequence>0&&STATES.includes(s.state)&&typeof s.project==='string'&&s.project.length<=80&&typeof s.label==='string'&&s.label.length<=120&&[s.startedAt,s.finishedAt].every(t=>t===null||Number.isFinite(t)&&t>=0&&t<=now()+60000)&&Number.isInteger(s.activeCount)&&s.activeCount>=0&&s.activeCount<=1000;
  return http.createServer(async(req,res)=>{
   const reply=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET, PUT, POST, OPTIONS','Access-Control-Allow-Private-Network':'true'});res.end(JSON.stringify(body));};
@@ -28,6 +32,7 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
     return reply(404,{error:'Not found'});
    }catch(e){return reply(e.code==='confirmation'?409:400,{error:e.message,confirmation:e.code==='confirmation'});}
   }
+  if(req.method==='GET'&&Object.hasOwn(deskFiles,req.url)){const [file,type]=deskFiles[req.url];try{res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'});res.end(fs.readFileSync(path.join(deskRoot,file)));}catch{res.end('Ranch Desk files missing. Re-extract the complete companion.');}return;}
   if(req.method==='GET'&&Object.hasOwn(publicFiles,req.url)){
    const [file,type]=publicFiles[req.url];try{const bytes=fs.readFileSync(path.join(uiRoot,file));res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'});res.end(bytes);}catch{reply(503,{error:'Companion UI missing. Re-extract the complete release.'});}return;
   }
@@ -35,7 +40,14 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
   const provided=Buffer.from(req.headers.authorization||''),expected=Buffer.from('Bearer '+key);
   if(provided.length!==expected.length||!timingSafeEqual(provided,expected))return reply(401,{error:'Pairing key rejected'});
   for(const [id,s]of sessions)if(now()-s.lastSeen>300000){sessions.delete(id);terminals.delete(id);}
-  if(req.method==='GET'&&req.url==='/state'){if(manager)manager.widgetSeen=now();return reply(200,{app:'omp-bot',version:1,capabilities:{focus:!!focusTerminal||!!manager},sleepSeconds:manager?.sleepSeconds||120,sessions:[...(manager?.residents()||[]),...[...sessions.values()].filter(s=>!managedIds.has(s.id)).map(s=>{const stale=now()-s.lastSeen>ttl;return {...s,...(stale?{state:'offline',label:'Terminal disconnected'}:{}),canFocus:!!focusTerminal&&terminals.has(s.id)&&!stale&&s.state!=='offline'};})]});}
+  if(req.method==='GET'&&req.url==='/state'){if(selectedId&&!sessions.has(selectedId)&&!manager?.residents().some(s=>s.id===selectedId)){selectedId='';selectionRevision++;}if(manager)manager.widgetSeen=now();return reply(200,{app:'omp-bot',version:1,capabilities:{focus:!!focusTerminal||!!manager,selection:true},selectedId,selectionRevision,selectionInstance,sleepSeconds:manager?.sleepSeconds||120,sessions:[...(manager?.residents()||[]),...[...sessions.values()].filter(s=>!managedIds.has(s.id)).map(s=>{const stale=now()-s.lastSeen>ttl;return {...s,...(s.state==='offline'?{metadata:undefined}:{}),...(stale?{state:'offline',label:'Terminal disconnected',metadata:undefined}:{}),canFocus:!!focusTerminal&&terminals.has(s.id)&&!stale&&s.state!=='offline'};})]});}
+  if(req.method==='POST'&&req.url==='/selection'){
+   try{const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>256)return reply(413,{error:'Request too large'});chunks.push(chunk);}const data=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if(!data||typeof data.id!=='string'||Object.keys(data).length!==1)return reply(400,{error:'Expected a session ID only'});
+    if(!sessions.has(data.id)&&!manager?.residents().some(s=>s.id===data.id))return reply(404,{error:'Unknown resident'});
+    selectedId=data.id;selectionRevision++;return reply(200,{selectedId,selectionRevision,selectionInstance});
+   }catch{return reply(400,{error:'Invalid selection request'});}
+  }
   if(req.method==='POST'&&req.url==='/focus'){
    try{let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>256)return reply(413,{error:'Request too large'});body+=chunk;}
     const request=JSON.parse(body);if(!request||typeof request.id!=='string'||Object.keys(request).length!==1)return reply(400,{error:'Expected a session ID only'});
@@ -49,8 +61,12 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
   }
   if(req.method!=='PUT'||req.url!=='/snapshot')return reply(404,{error:'Not found'});
   try{
-   const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>4096){reply(413,{error:'Snapshot too large'});return;}chunks.push(chunk);}
+   const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>8192){reply(413,{error:'Snapshot too large'});return;}chunks.push(chunk);}
    const s=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(!valid(s))return reply(400,{error:'Invalid snapshot'});
+   const metadata=sanitizeMetadata(s.metadata);
+   if(s.metadata!==undefined&&!metadata)return reply(400,{error:'Invalid metadata'});
+   if(metadata)s.metadata=metadata;
+   if(s.preview!==undefined&&Buffer.byteLength(JSON.stringify(s.preview),'utf8')>4000)return reply(413,{error:'Preview too large'});
    const preview=sanitizePreview(s.preview,now());
    if(s.preview!==undefined&&!preview)return reply(400,{error:'Invalid preview'});
    if(preview)s.preview=preview;
@@ -62,7 +78,7 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
    const prev=sessions.get(id);const idleSince=prev&&prev.state===state&&prev.startedAt===startedAt?prev.idleSince:now();
    if(manager?.observe(s))managedIds.add(id);
    if(s.terminal)terminals.set(id,{pid:s.terminal.pid,started:s.terminal.started});else terminals.delete(id);
-   sessions.set(id,{id,sequence,project,state,label,startedAt,finishedAt,activeCount,idleSince,lastSeen:now(),...(preview?{preview}:{})});return reply(200,{ok:true});
+   sessions.set(id,{id,sequence,project,state,label,startedAt,finishedAt,activeCount,idleSince,lastSeen:now(),...(metadata?{metadata}:{}),...(preview?{preview}:{})});return reply(200,{ok:true});
   }catch{if(!res.headersSent)reply(400,{error:'Invalid snapshot'});}
  });
 }

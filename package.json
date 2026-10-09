@@ -25,7 +25,8 @@
     "test:unit": "node --test tests/*.test.cjs",
     "test:build": "node --test tests/build.test.cjs",
     "test:audio": "dotnet run --project tests/audio-companion -c Release",
-    "test:ranch-native": "node --test sources/omp-bot-companion/tests/setup-colors.test.mjs && powershell.exe -NoProfile -NonInteractive -File sources/omp-bot-companion/tests/terminal-arguments.test.ps1"
+    "test:ranch-native": "node --test sources/omp-bot-companion/tests/setup-colors.test.mjs && powershell.exe -NoProfile -NonInteractive -File sources/omp-bot-companion/tests/terminal-arguments.test.ps1",
+    "build:desk": "node tools/build.cjs desk"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

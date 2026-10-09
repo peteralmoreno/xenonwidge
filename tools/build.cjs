@@ -7,16 +7,18 @@ const projects = {
   doodle: { source: 'doodle-pad', name: 'doodle-pad' },
   audio: { source: 'audio-deck', name: 'audio-deck' },
   ranch: { source: 'omp-bot', name: 'bot-ranch' },
+  desk: { source: 'ranch-desk', name: 'ranch-desk' },
 };
 const common = ['manifest.json', 'translation.json', 'index.html', 'resources/icon.svg'];
 const widgetFiles = {
   doodle: [...common, 'styles/widget.css', ...['app', 'core', 'drawing', 'host', 'picker'].map(n => `scripts/${n}.js`)],
   audio: [...common, 'app.js', 'widget.css'],
-  ranch: [...common, 'app.js', 'sprites.js', 'world.js', 'widget.css'],
+  ranch: [...common, 'app.js', 'sprites.js', 'world.js', 'appearance.js', 'widget.css'],
+  desk: [...common, 'app.js', 'appearance.js', 'widget.css'],
 };
 const ranchFiles = [
   'README.md', 'bridge.mjs', 'config.mjs', 'extension.mjs', 'focus.mjs', 'manager.mjs',
-  'native.mjs', 'open-setup.mjs', 'preview.mjs', 'server.mjs', 'state.mjs',
+  'metadata.mjs', 'native.mjs', 'open-setup.mjs', 'preview.mjs', 'server.mjs', 'state.mjs',
   'Focus-Terminal.ps1', 'Terminal-Control.ps1', 'Start-Bot-Ranch.ps1',
   'Launch-Companion.cmd', 'Open Bot Ranch Setup.cmd', 'Start-Bot-Ranch.cmd', 'Start-OMP.cmd',
   'launch-companion.sh', 'open-setup.sh', 'ranch-terminal.sh', 'start-bot-ranch.sh', 'start-omp.sh',
@@ -34,6 +36,7 @@ function copyFiles(source, destination, files) {
 function stageRanch(sources, destination) {
   copyFiles(path.join(sources, 'omp-bot-companion'), destination, ranchFiles);
   copyFiles(path.join(sources, 'omp-bot'), path.join(destination, 'ui'), widgetFiles.ranch);
+  copyFiles(path.join(sources, 'ranch-desk'), path.join(destination, 'desk'), widgetFiles.desk);
 }
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: root, stdio: 'inherit', windowsHide: true });
@@ -45,8 +48,8 @@ function archive(directory, destination) {
 }
 function build(target = 'all', mode = 'build') {
   if (process.platform !== 'win32') throw new Error('Release builds require Windows (PowerShell and the Windows .NET target).');
-  const selected = target === 'all' ? Object.keys(projects) : [target];
-  if (selected.some(key => !projects[key]) || !['build', 'widget', 'companion', 'validate'].includes(mode)) throw new Error('Usage: node tools/build.cjs [all|doodle|audio|ranch] [build|widget|companion|validate]');
+  const selected = target === 'all' ? Object.keys(projects) : target === 'ranch' && mode === 'build' ? ['ranch', 'desk'] : [target];
+  if (selected.some(key => !projects[key]) || !['build', 'widget', 'companion', 'validate'].includes(mode)) throw new Error('Usage: node tools/build.cjs [all|doodle|audio|ranch|desk] [build|widget|companion|validate]');
   const sources = path.join(root, 'sources');
   const generated = path.join(root, 'artifacts');
   fs.mkdirSync(generated, { recursive: true });
@@ -69,7 +72,7 @@ function build(target = 'all', mode = 'build') {
           fs.copyFileSync(path.join(staging, filename), path.join(release, filename));
         }
       }
-      if ((mode === 'build' || mode === 'companion') && key !== 'doodle') {
+      if ((mode === 'build' || mode === 'companion') && ['audio', 'ranch'].includes(key)) {
         const name = `${project.name}-companion-${version}`;
         const companion = path.join(staging, name);
         if (key === 'ranch') stageRanch(sources, companion);

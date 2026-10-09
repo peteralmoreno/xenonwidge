@@ -36,7 +36,7 @@ test('OMP bridge authenticates, rejects stale snapshots, projects fields, and ex
   let state=await(await fetch(base+'/state',{headers})).json();assert.equal(state.sessions[0].state,'reading');assert.equal(state.sessions[0].prompt,undefined);
   clock=1101;state=await(await fetch(base+'/state',{headers})).json();assert.equal(state.sessions[0].state,'offline');
   assert.equal((await put({...body,sequence:2,state:'writing'})).status,200);state=await(await fetch(base+'/state',{headers})).json();assert.equal(state.sessions[0].state,'writing');
-  assert.equal((await put({...body,id:'too-big',label:'x'.repeat(5000)})).status,413);
+  assert.equal((await put({...body,id:'too-big',label:'x'.repeat(9000)})).status,413);
  }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
 test('OMP idle compaction restores the completed state and exhausted retries show an error',async()=>{

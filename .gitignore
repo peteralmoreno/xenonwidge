@@ -1,6 +1,7 @@
 # Dependencies, build outputs and historical local releases
 node_modules/
 artifacts/
+.artifact-archive/
 test-results/
 playwright-report/
 .superpowers/

@@ -1,4 +1,4 @@
-# Bot Ranch Central Companion 0.4.0
+# Bot Ranch Central Companion 0.6.0
 
 Start with Open Bot Ranch Setup.cmd, or bash open-setup.sh. One local Node process serves the setup page, manages four saved residents and supplies widget status. The launcher reuses a healthy companion and reports an occupied port/older companion instead of starting a second service. Launch-Companion.cmd remains available for a visible diagnostic console.
 
@@ -19,3 +19,5 @@ The old Start-OMP and Start-Bot-Ranch launch scripts remain for compatibility; u
 Resident windows use a permanent Bot Ranch - nickname title, a matching background tint and cursor. Existing terminals must be closed and reopened after work finishes to load the new extension/title. One tap on a widget bot peeks; a second tap within 450 ms focuses its window.
 
 Build from the repository root with npm ci and npm run build:ranch. Releases are generated under artifacts/releases/bot-ranch. See ../../docs/guides/build-and-import.md.
+
+Ranch Desk is bundled under desk/ and served at /desk/. Authenticated POST /selection accepts only an existing resident ID, stores it in memory, and never focuses a terminal. /state includes the shared selection revision and per-process instance ID so widgets recover after a companion restart.

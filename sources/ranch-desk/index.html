@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tr('Ranch Desk')</title>
+<link rel="icon" type="image/svg+xml" href="resources/icon.svg" />
+<link rel="stylesheet" href="widget.css" />
+<script src="appearance.js" defer="defer"></script><script src="app.js" defer="defer"></script>
+</head>
+<body data-connected="false">
+<main class="desk">
+<header><div class="brand"><img src="resources/icon.svg" alt="" /><h1>Ranch Desk</h1></div><button id="connect" aria-label="Connection settings">Connect</button></header>
+<nav id="roster" aria-label="Ranch residents"></nav>
+<article class="paper" aria-label="Selected resident">
+<div class="paper-heading"><div><h2 id="name">No resident selected</h2><p id="state">Connect your ranch</p></div><span class="paperclip" aria-hidden="true"></span></div>
+<div class="note-scroll" tabindex="0" aria-label="Conversation excerpt"><p id="detail">Use the companion pairing key to bring your ranch to this desk.</p><section class="resident-metadata" aria-label="Session details"><dl><div class="metadata-row"><dt>Folder</dt><dd id="folder">Unavailable</dd></div><div class="metadata-row"><dt>Model</dt><dd id="model">Unavailable</dd></div></dl><div class="context-heading"><span>Context estimate</span><span id="context-value">Unavailable</span></div><progress id="context-meter" max="100" value="0" aria-label="Estimated context window used" hidden="hidden"></progress><p id="context-warning" role="status" hidden="hidden" title="Your chosen 40% context reminder; this does not measure model quality.">Dumbzone warning: 40%+</p></section><div class="preview-meta"><span id="role">Conversation preview</span><time id="time"></time></div><p id="excerpt">Your selected bot's latest message will appear here.</p></div>
+<div class="paper-bottom"><p id="result" role="status"></p><button id="focus" disabled="disabled">Open terminal</button></div>
+</article>
+<footer><p id="summary">Waiting for the companion</p><p id="sync">Select a resident here or in Bot Ranch.</p></footer>
+</main>
+<dialog id="pairing" aria-labelledby="pair-title"><form id="pair-form"><h2 id="pair-title">Connect Ranch Desk</h2><p>Paste the same key you use for Bot Ranch. In iCUE, allow 127.0.0.1 in Settings → Software Settings → Widget Access.</p><label for="key">Pairing key</label><input id="key" type="password" autocomplete="off" spellcheck="false" required="required" minlength="64" maxlength="64" /><p id="pair-error" role="alert"></p><div class="dialog-actions"><button id="close" type="button">Close</button><button type="submit">Connect</button></div></form></dialog>
+</body></html>

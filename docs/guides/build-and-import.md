@@ -22,10 +22,11 @@ The build stages only explicitly listed source files in a unique temporary direc
 
 | Command | Result |
 | --- | --- |
-| `npm run build` | All three widgets and both companions |
+| `npm run build` | All four widgets and both companions |
 | `npm run build:doodle` | Doodle Pad widget |
 | `npm run build:audio` | Audio Deck widget and Windows companion ZIP |
-| `npm run build:ranch` | Bot Ranch widget and companion ZIP |
+| `npm run build:desk` | Ranch Desk widget only |
+| `npm run build:ranch` | Bot Ranch + Ranch Desk widgets and companion ZIP |
 | `npm run validate:all` | Validate all staged widgets |
 | `npm run build:companion` | Audio Deck companion ZIP only |
 | `npm run build:ranch-companion` | Bot Ranch companion ZIP only |
@@ -36,6 +37,7 @@ Existing `package`, `package:audio`, `package:omp`, `validate`, `validate:audio`
 artifacts/releases/doodle-pad/doodle-pad-<version>.icuewidget
 artifacts/releases/audio-deck/audio-deck-<version>.icuewidget
 artifacts/releases/audio-deck/audio-deck-companion-<version>.zip
+artifacts/releases/ranch-desk/ranch-desk-<version>.icuewidget
 artifacts/releases/bot-ranch/bot-ranch-<version>.icuewidget
 artifacts/releases/bot-ranch/bot-ranch-companion-<version>.zip
 ```
@@ -66,3 +68,7 @@ Manually verify iCUE import, touch/settings persistence, Audio Deck playback/mix
 Commit source, tools, tests, docs, root configuration and dependency lock files. Generated `artifacts`, dependencies, test outputs, credentials and conversation histories are ignored. Before first push, inspect `git status --short` and `git diff --cached`; ignore patterns do not remove files already tracked in another repository. Add new runtime files to the explicit release inputs in `tools/build.cjs` and rerun packaging tests and the relevant build.
 
 The repository includes the NAudio notice and publishes .NET runtime notices with Audio Deck. External documentation references are listed in [sources](../reference/sources.md). Existing design plans record historical intent; source and this guide define the current build path.
+
+## Large ranch + Medium desk
+
+Import Bot Ranch 0.6.0 and Ranch Desk 0.1.0, choose Large for the ranch and Medium for the desk, and pair both with the same companion key. The 0.6.0 companion synchronizes resident selection; selecting does not open a terminal. The desk has an explicit Open terminal button. Older companions support local Desk selection but must be upgraded for shared selection. Extract the entire updated companion ZIP; close the previous companion process before opening the new setup launcher. User OMP terminals can remain open through a companion upgrade.
