@@ -1,45 +1,31 @@
-# Bot Ranch 0.6.0
+# Bot Ranch 0.11.1
 
-An overhead pixel ranch for up to four named Oh My Pi terminals, with twelve resident colors. Medium and Large layouts support landscape and portrait.
+Bot Ranch is a Large overhead ranch widget with an integrated Tasks view and bot details. It connects to one local companion that keeps resident profiles, project tasks, preferences, and existing terminal-session records. The widget's management workflow is designed for the Large layout; physical display fit still needs device validation.
 
 ## Start
 
-1. Build with npm ci, then npm run build:ranch from the repository root. See ../../docs/guides/build-and-import.md for prerequisites and all-project builds.
-2. In the generated companion folder, double-click Open Bot Ranch Setup.cmd. This starts/reuses the central local companion and opens authenticated setup.
-3. Add residents: nickname, existing project folder and color. Check setup, then Launch / Resume. New session starts a fresh conversation while preserving earlier history. Close requests normal closure and may require confirmation.
-4. Import the generated bot-ranch-0.6.0.icuewidget in iCUE. Choose Medium or Large. Use Show key / Copy in setup to pair. Allow 127.0.0.1:43822 under Settings > Software Settings > Widget Access.
+1. Build with `npm ci`, then `npm run build:ranch` from the repository root. See [build and import](../../docs/guides/build-and-import.md).
+2. Extract the companion ZIP and run `Install botRanch.cmd` once. Thereafter open **botRanch** from the Start menu.
+3. Add bot profiles with project folders, colors, role, model preference, context policy, pickup setting, and read-only request. The active ranch shows up to six profiles; saved Bot Bank profiles retain their identity and settings.
+4. Import Bot Ranch into iCUE, choose Large, and pair it with the status key from setup. In iCUE, allow `127.0.0.1:43822` under Settings > Software Settings > Widget Access.
+5. Open Settings > Connection. Paste the single connection key into the widget's Connect dialog for activity and management controls.
 
 ## Use
 
-- One tap selects the resident on Ranch Desk without a popup. Two quick taps bring its terminal forward. Ranch Desk also has an explicit Open terminal button.
-- Idle connected bots roam the entire ranch, then sleep after the configured delay. Reading, research and writing use distinct stations; running commands use the workshop. Questions and errors gather near the attention bell. Disconnected bots return to corner charging docks.
-- Question/error/completion alerts are larger. Bot colors and positions are independent: changing color keeps its resident slot.
-- Terminal windows use Bot Ranch - nickname, a matching dark background tint, and a colored cursor. Windows controls the native title-bar color. Name/color edits apply next launch.
-- Model-login checks are hidden. Use /login and /model inside OMP if needed.
+- Ranch shows terminal activity, attention, selected-bot details, observed model/context metadata when available, and the latest supported visible excerpt. Selecting a bot does not focus its terminal; double-tap or use the explicit terminal action.
+- Tasks stores project-targeted local work with instructions, acceptance criteria, assignment, model-family preferences, requested reasoning effort, and automatic-pickup release. Assignment does not start work. Release starts only when global pickup is enabled and an active eligible bot is available.
+- Start creates a durable attempt and launches through the OMP extension. The task stays To do until OMP acknowledges agent start; success enters Review, while failures and lost terminals remain Blocked. Explicit acceptance is required for Done. Runtime model and effort are checked before the task prompt, and read-only mode enforces workspace-scoped filesystem reads only.
+- Available and Rest update the bot's pickup preference for future work; they do not stop current terminal activity. Cleanup is a manual OMP action: run `/ranch-clean` inside the selected bot terminal to open a fresh session. Neither action deletes conversation history or project files.
+- Task archive preserves the task record. Saves use revisions; conflicting edits show an error and require reload. The companion persists accepted state in `%LOCALAPPDATA%\OmpBot\ranch.json`.
+- Bot Bank profiles can be admitted or retired from the widget. Retirement during active or unresolved terminal activity waits for a safe `ready` or `done` observation and keeps the profile and history.
 
-## Upgrade
+## Ranch behavior
 
-Existing settings, pairing credentials, folders and history are kept in %LOCALAPPDATA%/OmpBot. Old terminals can continue reporting status. To load current folder, model and context metadata, finish current work, close the resident and Launch / Resume from the updated companion. A widget-only update cannot update an already-running OMP extension.
+All eleven public terminal states remain distinct. Work activities use the active map's station routes; waiting/error use the attention bell, ready/done roam and sleep, and offline uses charging docks. Meadow and Courtyard coordinates are shared by movement and station artwork. The walking pace is multiplied by 1.15 while relative color speeds and idle timing stay the same. Quiet, Pause, reduced motion, selection, and touch holds continue to preserve status visibility.
 
-## Conversation previews
+Colors set a resident's relative walking pace. These are baseline pixels per second before the 1.15 movement multiplier.
 
-The extension sends up to 400 characters of the latest visible user or assistant message through the authenticated local companion. The snippet is held in memory, displayed as plain text, and cleared on an empty new session or disconnect. Hidden reasoning and tool output are excluded. Snippets are not saved in ranch.json. Anyone who can see the display can read the desk excerpt.
-
-## Requirements
-
-Windows, Node 20+, Git for Windows/Git Bash, and a compatible Oh My Pi installation (tested with OMP 18.8.6 / Bun 1.4.2). OMP and provider authentication are runtime requirements, not prerequisites for building the widget. Native window focus may be refused by Windows; the UI reports that result. The companion never force-kills user terminals.
-
-## Cozy ranch and supporting desk
-
-Use Large for the ranch and the remaining Medium slot for [Ranch Desk](../ranch-desk/README.md). Pair both with the same key. Tapping a resident shares selection with the desk through companion 0.6.0. Quiet mode slows roaming and stops decorative animation without hiding alerts; Pause and reduced-motion still provide static poses. Names include small activity labels and finished work gets a short celebration. npm run build:ranch builds both widgets and the companion.
-
-## Appearance and roaming
-
-Use **Look** on either widget for Moss, Sunset or Moonlight colors and Meadow or Courtyard scenery. Preferences persist separately in each widget; choose matching options on both. Courtyard rearranges the work stations. Ranch labels are two pixels larger.
-
-Color gives each bot a stable walking pace, independent of screen size. All residents still roam the entire field. Quiet mode reduces speed further. Maximum idle destination changes per minute are shown below; bots finish their current walk before choosing another destination, so long walks reduce the actual rate.
-
-| Color | Pixels/second | Max destination changes/minute |
+| Color | Baseline px/s | Max idle destinations/minute |
 | --- | ---: | ---: |
 | Coral | 32 | 6 |
 | Cyan | 28 | 5 |
@@ -53,3 +39,24 @@ Color gives each bot a stable walking pace, independent of screen size. All resi
 | Indigo | 23 | 3 |
 | Silver | 26 | 4 |
 | Red | 35 | 6 |
+
+## Runtime and privacy
+
+Windows, Node 20+, Git for Windows/Git Bash, and compatible Oh My Pi are required to run managed terminals. OMP and provider authentication are runtime requirements. Setup readiness checks do not verify provider login or send model prompts.
+
+The connection key authorizes status, focus, and widget bot/task controls. Setup credentials and per-launch runtime credentials stay private and automatic; no arbitrary shell-command endpoint is exposed. Legacy management tokens remain supported for older widgets.
+
+The OMP extension sends up to 400 characters of the latest visible user/assistant text for the details peek. Hidden reasoning and tool output are excluded. Excerpts remain in memory and are not saved in `ranch.json`. No conversation reset or workspace cleanup is implemented.
+
+Ranch Desk remains in the release as a compatibility widget for existing installs and is not required for the integrated Ranch workflow.
+
+
+## Playful ranch and work queues (0.11.1)
+
+Ranch pokes and dragging only affect appearance/inspection. Drop a bot on the Desk to inspect it; use explicit controls to change work. The pinned Desk prioritizes Now, Next and Needs you, with expandable statistics. Personality changes presentation independently of work role.
+
+The companion Board has Workflow and Bot queues views. Inbox holds unreleased drafts; Ready holds released work. Assign tasks to a bot or leave them in the shared pool. Drag to append/reorder, or use Move earlier/later. Assigned released work precedes shared work. A blocked assigned head remains visible and is not silently skipped. Dependencies explicitly wait for accepted Done; queue order alone does not create dependencies. Changes conflict if another view has already updated the queue.
+
+Finish then rest disables future pickup without stopping current work. Stop current task requires confirmation and verified terminal closure; interrupted tasks need review/retry. Current attempts retain their launch settings. Completion enters Review, with the bot's reported handover preserved at home; acceptance moves it to Done.
+
+Idle work checks: **Check for work** on the Desk or Board > Bot queues requests one check, even while automatic pickup is paused. It never releases held tasks. Busy agents, pending questions/approvals, queued messages and asynchronous jobs defer checking. Enabled automatic pickup uses the same idle check. The terminal window stays open: the launcher hands off to a fresh OMP process, resuming saved task context only when policy permits. Older terminals need one restart with this release; direct Start on an already-open terminal still requires closure, so use Check for work instead. Lost acknowledgments remain unresolved rather than retrying. Live provider execution and physical iCUE touch are not certified by browser/mock tests.

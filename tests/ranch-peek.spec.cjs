@@ -1,13 +1,29 @@
 const {test,expect}=require('@playwright/test');const path=require('node:path');
-test('single tap selects without popup; double tap focuses and extended colors retain slot',async({page})=>{
+test('tap selects and double tap stays playful; terminal opens only from its button',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});
  let focus=0,selected='';const sessions=[{id:'ranch-one',managed:true,slot:2,color:9,project:'Indigo',state:'waiting',label:'Needs your answer',lastSeen:Date.now(),canFocus:true}];
- await page.route('http://127.0.0.1:43822/**',r=>{if(r.request().url().endsWith('/focus')){focus++;return r.fulfill({json:{result:'focused'}});}if(r.request().url().endsWith('/selection')){selected=r.request().postDataJSON().id;return r.fulfill({json:{selectionRevision:1}});}return r.fulfill({json:{app:'omp-bot',version:1,capabilities:{focus:true,selection:true},sessions}});});
+ await page.route('http://127.0.0.1:43822/**',r=>{const headers={'Access-Control-Allow-Origin':'http://ranch.test','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Private-Network':'true'};if(r.request().method()==='OPTIONS')return r.fulfill({status:204,headers});if(r.request().url().endsWith('/focus')){focus++;return r.fulfill({status:200,headers,json:{result:'focused'}});}if(r.request().url().endsWith('/selection')){selected=r.request().postDataJSON().id;return r.fulfill({status:200,headers,json:{selectionRevision:1}});}return r.fulfill({status:200,headers,json:{app:'omp-bot',version:1,capabilities:{focus:true,selection:true},sessions}});});
  await page.route('http://ranch.test/**',r=>r.fulfill({path:path.join(__dirname,'../sources/omp-bot',new URL(r.request().url()).pathname==='/'?'index.html':new URL(r.request().url()).pathname)}));
- await page.goto('http://ranch.test/');await page.getByLabel('Pairing key').fill('a'.repeat(64));await page.getByRole('button',{name:'Connect',exact:true}).click();
+ await page.goto('http://ranch.test/');await page.locator('#connect').click();await page.getByLabel('Connection key').fill('a'.repeat(64));await page.getByRole('button',{name:'Connect',exact:true}).click();
  const bot=page.locator('.bot');await expect(bot).toHaveAttribute('data-color','indigo');await expect(bot.locator('.label')).toHaveText('3 Indigo');
  await bot.click();await expect.poll(()=>selected).toBe('ranch-one');await page.waitForTimeout(550);expect(focus).toBe(0);await expect(page.locator('dialog[open],#peek:not([hidden])')).toHaveCount(0);
- await bot.dblclick();await expect.poll(()=>focus).toBe(1);
+ await bot.dblclick();await page.waitForTimeout(550);expect(focus).toBe(0);
+ await page.getByRole('button',{name:'Open selected terminal'}).click();await expect.poll(()=>focus).toBe(1);
  sessions[0].color=11;await expect(bot).toHaveAttribute('data-color','red');await expect(bot.locator('.label')).toHaveText('3 Indigo');
  sessions[0].state='offline';await expect(bot).toHaveAttribute('data-mode','offline');await page.waitForTimeout(550);await bot.dblclick();expect(focus).toBe(1);
+});
+
+test('local desk selection stays pinned; visual drops only select when released on the Desk',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});
+ let selectedId='one',selectionRevision=0;const requests=[],sessions=[{id:'one',managed:true,profileId:'p1',slot:0,color:0,project:'Clover',state:'ready',canFocus:true},{id:'two',managed:true,profileId:'p2',slot:1,color:1,project:'Juniper',state:'ready',canFocus:true}];
+ await page.addInitScript(()=>localStorage.setItem('omp-bot.key','a'.repeat(64)));
+ await page.route('http://127.0.0.1:43822/**',r=>{const headers={'Access-Control-Allow-Origin':'http://ranch.test','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Private-Network':'true'};if(r.request().method()==='OPTIONS')return r.fulfill({status:204,headers});const url=new URL(r.request().url());if(r.request().method()==='POST'){const body=r.request().postDataJSON();requests.push({path:url.pathname,...body});selectedId=body.id;selectionRevision++;return r.fulfill({status:200,headers,json:{selectionRevision}});}return r.fulfill({status:200,headers,json:{app:'omp-bot',version:1,capabilities:{focus:true,selection:true},sessions,selectedId,selectionRevision,selectionInstance:'boot-one'}});});
+ await page.route('http://ranch.test/**',r=>r.fulfill({path:path.join(__dirname,'../sources/omp-bot',new URL(r.request().url()).pathname==='/'?'index.html':new URL(r.request().url()).pathname)}));
+ await page.goto('http://ranch.test/');await expect(page.locator('.bot')).toHaveCount(2);const first=page.locator('.bot[data-id="one"]'),second=page.locator('.bot[data-id="two"]');
+ await first.click();await expect.poll(()=>requests.length).toBe(1);await expect(first).toHaveAttribute('aria-pressed','true');
+ selectedId='two';selectionRevision++;await page.waitForTimeout(900);await expect(first).toHaveAttribute('aria-pressed','true');
+ const scene=await page.locator('#scene').boundingBox();await second.evaluate((el,point)=>{el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:21,pointerType:'touch',isPrimary:true,clientX:point.x,clientY:point.y}));el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:21,pointerType:'touch',isPrimary:true,clientX:point.x+60,clientY:point.y+30}));el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:21,pointerType:'touch',isPrimary:true,clientX:point.x+60,clientY:point.y+30}));},{x:scene.x+scene.width*.5,y:scene.y+scene.height*.5});
+ await page.waitForTimeout(200);expect(requests).toHaveLength(1);
+ const desk=await page.locator('#ranch-desk').boundingBox();await second.evaluate((el,point)=>{el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:22,pointerType:'touch',isPrimary:true,clientX:point.x,clientY:point.y}));el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:22,pointerType:'touch',isPrimary:true,clientX:point.x+50,clientY:point.y+25}));el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:22,pointerType:'touch',isPrimary:true,clientX:point.x+50,clientY:point.y+25}));},{x:desk.x+desk.width/2,y:desk.y+desk.height/2});
+ await expect(second).toHaveAttribute('aria-pressed','true');await expect(page.locator('#desk-more')).toHaveAttribute('open','');await expect.poll(()=>requests.length).toBe(2);expect(requests.every(r=>r.path==='/selection')).toBe(true);
 });

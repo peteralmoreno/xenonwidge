@@ -1,11 +1,19 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');
 test('color traits set calm pixel speed independent of ranch size and cap idle turns',()=>{
- const {step,traits}=require('../sources/omp-bot/world.js');assert.equal(traits.length,12);
+ const {step,traits,paceMultiplier}=require('../sources/omp-bot/world.js');assert.equal(traits.length,16);assert.equal(paceMultiplier,1.15);
  for(let color=0;color<12;color++)for(const width of [840,1688]){
   const bot={slot:0,color};step(bot,'idle',0,0,false,400,90,width,90);bot.target={x:80,y:80};const start={...bot.position};step(bot,'idle',50,.05,false,400,90,width,90);
-  const distance=Math.hypot((bot.position.x-start.x)*width/100,(bot.position.y-start.y)*4);assert.ok(Math.abs(distance-traits[color].speed*.05)<.001);assert.ok(distance<=1.801);
+  const distance=Math.hypot((bot.position.x-start.x)*width/100,(bot.position.y-start.y)*4);assert.ok(Math.abs(distance-traits[color].speed*paceMultiplier*.05)<.001);assert.ok(distance<=2.071);
   bot.target={...bot.position};bot.next=0;step(bot,'idle',2000,0,false,400,90,width,90);assert.ok(bot.next>=2000+60000/traits[color].turns);
  }
+});
+test('map definitions own activity routes and reject missing destinations',()=>{
+ const {step,validateMap}=require('../sources/omp-bot/world.js');
+ const alternate={stations:{desk:{x:20,y:30},lab:{x:80,y:30},bell:{x:50,y:50}},workRoutes:{reading:'desk',researching:'lab',writing:'desk',thinking:'desk',running:'lab',working:'lab'}};
+ assert.equal(validateMap(alternate),true);
+ const bot={slot:0,session:{state:'thinking'}};step(bot,'work',0,0,true,450,90,1650,90,false,alternate);assert.equal(bot.station,'desk');assert.ok(bot.position.x<30);
+ assert.throws(()=>step({slot:0,session:{state:'writing'}},'work',0,0,true,450,90,1650,90,false,{...alternate,workRoutes:{...alternate.workRoutes,writing:'missing'}}),/invalid map/i);
+ assert.throws(()=>validateMap({...alternate,workRoutes:{...alternate.workRoutes,reading:undefined}}),/invalid map/i);
 });
 test('changing map reroutes work to its matching station',()=>{
  const {step}=require('../sources/omp-bot/world.js');const bot={slot:0,session:{state:'writing'}};
@@ -53,5 +61,14 @@ test('roaming keeps the whole bot inside resized ranch bounds',t=>{
   step(bot,'idle',16000,0,false,110,54,400,72);
   assert.ok(bot.position.x>=11&&bot.position.x<=89);
   assert.ok(bot.position.y>=100*35/110&&bot.position.y<=100*75/110);
+ }
+});
+
+test('six residents have distinct docks and packed work positions within Large and XL ranch bounds',()=>{
+ const {step,homes,docks}=require('../sources/omp-bot/world.js');assert.equal(homes.length,6);assert.equal(docks.length,6);
+ for(const [width,height] of [[1100,560],[1650,540],[600,400]])for(const state of ['offline','reading','writing','waiting']){
+  const positions=[];
+  for(let slot=0;slot<6;slot++){const b={slot,session:{state}};step(b,state==='offline'?'offline':state==='waiting'?'waiting':'work',0,0,true,height,94,width,72);const x=b.position.x*width/100,y=b.position.y*height/100;assert.ok(x>=36&&x<=width-36);assert.ok(y>=47&&y<=height-47);positions.push({x,y});}
+  for(let a=0;a<6;a++)for(let b=a+1;b<6;b++)assert.ok(Math.abs(positions[a].x-positions[b].x)>=72||Math.abs(positions[a].y-positions[b].y)>=94,'six bots must not overlap at '+state);
  }
 });

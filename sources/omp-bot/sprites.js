@@ -2,7 +2,7 @@
 window.RanchSprites=(()=>{
  const rect=(x,y,w,h,fill,cls='')=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" class="${cls}"/>`;
  const ink='#233830',cream='#fff0bf';
- const colors=[['coral','#e58d77','#f8baa0'],['cyan','#68bbc3','#b0e3d7'],['gold','#ddb55c','#ffe3a1'],['violet','#a396ca','#d0c5eb'],['rose','#e78fb3','#ffd0e4'],['orange','#e8a05b','#ffd3a1'],['lime','#a8c966','#deeda5'],['emerald','#65b58e','#b4e5c7'],['blue','#729edb','#bfd8ff'],['indigo','#8585d5','#cccaff'],['silver','#bbc5cb','#ecf2f5'],['red','#cf7070','#ffc2b8']];
+ const colors=[['coral','#e58d77','#f8baa0'],['cyan','#68bbc3','#b0e3d7'],['gold','#ddb55c','#ffe3a1'],['violet','#a396ca','#d0c5eb'],['rose','#e78fb3','#ffd0e4'],['orange','#e8a05b','#ffd3a1'],['lime','#a8c966','#deeda5'],['emerald','#65b58e','#b4e5c7'],['blue','#729edb','#bfd8ff'],['indigo','#8585d5','#cccaff'],['silver','#bbc5cb','#ecf2f5'],['red','#cf7070','#ffc2b8'],['cream','#e4dcad','#fff1cf'],['mint','#66d9ce','#b8f4e9'],['orchid','#d976ed','#f3b5f7'],['copper','#a78362','#dec09d']];
  function svg(slot,state){
   const [,c,light]=colors[slot];let prop='',badge='';
   if(state==='reading')prop=rect(15,38,34,17,ink)+rect(17,40,13,12,cream)+rect(33,40,14,12,'#e6d79b')+rect(19,43,9,2,'#a99a68')+rect(35,43,9,2,'#a99a68');

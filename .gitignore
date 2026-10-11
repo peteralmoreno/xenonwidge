@@ -5,6 +5,7 @@ artifacts/
 test-results/
 playwright-report/
 .superpowers/
+.scratch/
 **/bin/
 **/obj/
 *.log

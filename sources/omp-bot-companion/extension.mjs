@@ -1,13 +1,42 @@
 import path from 'node:path';import {randomUUID} from 'node:crypto';
 import fs from 'node:fs';
-import {messagePreview,branchPreview} from './preview.mjs';
+import {createWorkChecker} from './work-check.mjs';
+import {messagePreview,branchPreview,handoverText} from './preview.mjs';
 import {contextMetadata} from './metadata.mjs';
+import {evaluateReadOnlyTool,resolveTaskModel,resolveTaskEffort} from './runtime-policy.mjs';
 import {BotState} from './state.mjs';import {readKey,port} from './config.mjs';
 export default function ompBot(pi){
- const bot=new BotState(),instance=randomUUID();let id=instance,sequence=0,project='Terminal',key='',timer=null,timerContext=null,sending=false,dirty=false,closed=false,terminal;
+ const bot=new BotState(),instance=randomUUID();let id=instance,sequence=0,project='Terminal',key='',timer=null,timerContext=null,sending=false,dirty=false,closed=false,terminal,taskDispatchStarted=false;
  let metadataContext;
+ const workToken=process.env.OMP_BOT_RUNTIME_TOKEN||'';delete process.env.OMP_BOT_RUNTIME_TOKEN;
+ const checkWork=createWorkChecker({context:()=>closed?null:metadataContext,state:()=>bot.view().state,file:(process.env.OMP_BOT_BINDING_FILE||'')+'.next.json',request:async()=>{if(!workToken||!terminal)return null;const r=await fetch(`http://127.0.0.1:${port}/runtime/work`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+workToken},body:JSON.stringify({profileId:process.env.OMP_BOT_PROFILE_ID,launchId:process.env.OMP_BOT_LAUNCH_ID,idle:true}),signal:AbortSignal.timeout(20000)});return r.ok?r.json():null;}});
  let preview,previewTimer=null,previewContext=null;
  const cancelPreview=()=>{if(previewTimer!==null){previewContext.clearTimer(previewTimer);previewTimer=null;}};
+ const runtimeToken=process.env.OMP_BOT_DISPATCH_TOKEN||'',taskRuntime=!!(process.env.OMP_BOT_TASK_ID&&process.env.OMP_BOT_ATTEMPT_ID&&/^[a-f0-9]{64}$/.test(runtimeToken));
+ if(taskRuntime)delete process.env.OMP_BOT_DISPATCH_TOKEN;
+ pi.registerCommand?.('ranch-clean',{description:'Open a fresh OMP session while keeping the previous session history.',handler:async(_args,ctx)=>{await ctx.waitForIdle();await ctx.newSession();ctx.ui?.notify?.('Fresh OMP session opened. Previous history and workspace files were preserved.','info');}});
+ if(process.env.OMP_BOT_ROLE_FILE)pi.on('before_agent_start',async(_event,ctx)=>{const instructions=fs.readFileSync(process.env.OMP_BOT_ROLE_FILE,'utf8');if(!taskRuntime&&process.env.OMP_BOT_ROLE_MODEL&&process.env.OMP_BOT_ROLE_MODEL!=='auto'){const chosen=resolveTaskModel({models:ctx.models?.list?.()||[],current:ctx.models?.current?.(),preferredModel:process.env.OMP_BOT_ROLE_MODEL});if(await pi.setModel(chosen)===false)throw Error('Role model is unavailable.');}return {systemPromptAppend:instructions};});
+ if(process.env.OMP_BOT_READ_ONLY==='true')pi.on('tool_call',(event,ctx)=>evaluateReadOnlyTool({toolName:event.toolName,input:event.input,cwd:ctx.cwd,workspace:process.env.OMP_BOT_TASK_WORKSPACE}));
+ const runtimeRequest=async(pathname,payload={})=>fetch(`http://127.0.0.1:${port}/runtime/${pathname}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+runtimeToken},body:JSON.stringify({profileId:process.env.OMP_BOT_PROFILE_ID,launchId:process.env.OMP_BOT_LAUNCH_ID,attemptId:process.env.OMP_BOT_ATTEMPT_ID,...payload}),signal:AbortSignal.timeout(1500)});
+ async function dispatchTask(ctx){
+  if(!taskRuntime||taskDispatching)return;taskDispatching=true;
+  try{
+   const response=await runtimeRequest('claim');if(!response.ok)throw Error('The companion did not confirm this task claim.');const {task}=await response.json();
+   const models=ctx.models?.list?.()||[],current=ctx.models?.current?.();
+   const chosen=resolveTaskModel({models,current,preferredModel:task.preferredModel||'auto',eligibility:task.modelEligibility||[]});
+   if(!current||current.provider!==chosen.provider||current.id!==chosen.id){if(typeof pi.setModel!=='function'||await pi.setModel(chosen)===false)throw Error('The requested model could not be selected.');}
+   const effectiveModel=ctx.models?.current?.()||chosen;if(effectiveModel.provider!==chosen.provider||effectiveModel.id!==chosen.id)throw Error('OMP did not confirm the requested model selection.');
+   const requested=task.reasoningRequest||'auto',supportedEfforts=effectiveModel.reasoning?['low','medium','high']:[];
+   const effort=resolveTaskEffort(supportedEfforts,requested);
+   if(effort){if(typeof pi.setThinkingLevel!=='function')throw Error('This OMP runtime cannot select a reasoning level.');pi.setThinkingLevel(effort);if(pi.getThinkingLevel?.()!==effort)throw Error('OMP did not confirm the requested reasoning level.');}
+   const settingsResponse=await runtimeRequest('event',{event:{type:'settings_resolved',settings:{provider:effectiveModel.provider,model:effectiveModel.id,reasoning:effort||'auto',role:task.role,readOnly:task.readOnly}}});if(!settingsResponse.ok)throw Error('The companion did not save the effective task settings.');
+   const roleDirections={generalist:'Complete the task using sound engineering judgment.',planner:'Analyze dependencies and risks, then carry out the requested plan.',researcher:'Prioritize evidence gathering and cite the relevant local files or sources.',implementer:'Make the requested changes and verify them with appropriate checks.',reviewer:'Review the work against acceptance criteria and report concrete findings.'};
+   const prompt=['Finish with a concise handover: outcome, checks actually performed, remaining concerns, and output file paths. Do not claim checks you did not perform.',`Role: ${task.role}. ${roleDirections[task.role]||roleDirections.generalist}`,`Task: ${task.title}`,`Role instructions:\n${task.roleInstructions||''}`,`Instructions:\n${task.instructions}`,task.acceptanceCriteria?`Acceptance criteria:\n${task.acceptanceCriteria}`:''].filter(Boolean).join('\n\n');
+   if(typeof pi.sendUserMessage!=='function')throw Error('This OMP runtime cannot accept a dispatched task.');
+   pi.sendUserMessage(prompt);
+  }catch(error){try{await runtimeRequest('event',{event:{type:'agent_error',error:String(error?.message||'Task dispatch failed.')}});}catch{}}
+ }
+ let taskDispatching=false;
  try{const binding=JSON.parse(fs.readFileSync(process.env.OMP_BOT_BINDING_FILE,'utf8'));if(Number.isSafeInteger(binding.pid)&&binding.pid>0&&/^\d{15,20}$/.test(binding.started))terminal={pid:binding.pid,started:binding.started};}catch{}
  async function flush(){
   if(sending||!key)return;sending=true;
@@ -37,11 +66,18 @@ export default function ompBot(pi){
     // The widget tracks this terminal instance across session switches.
     project=path.basename(ctx.cwd||process.cwd()).slice(0,80)||'Terminal';closed=false;
     try{key=readKey();}catch{key='';ctx.ui?.notify?.('OMP Bot: start its companion, then restart OMP to connect.','warning');}
-    if(typeof ctx.setInterval==='function'){timerContext=ctx;timer=ctx.setInterval(publish,2000);}
+    if(typeof ctx.setInterval==='function'){timerContext=ctx;timer=ctx.setInterval(()=>{publish();void checkWork();},2000);}
+    if(type==='session_start'&&taskRuntime&&!taskDispatchStarted){taskDispatchStarted=true;void dispatchTask(ctx);}
    }
    let pending=false;
    if(type==='agent_end'){const jobs=ctx.getAsyncJobSnapshot?.();pending=!!ctx.hasPendingMessages?.()||!!jobs?.running?.length;}
    bot.event({...event,type,pending});publish();
+   if(taskRuntime&&type==='agent_start')void runtimeRequest('event',{event:{type:'agent_start'}}).catch(()=>{});
+   if(taskRuntime&&type==='agent_end'){
+    const messages=Array.isArray(event.messages)?event.messages:[],lastAssistant=[...messages].reverse().find(message=>message?.role==='assistant'),stopReason=lastAssistant?.stopReason;
+    if(stopReason==='error'||stopReason==='aborted')void runtimeRequest('event',{event:{type:'agent_error',error:lastAssistant?.errorMessage||`Task turn ${stopReason}.`}}).catch(()=>{});
+    else if(!pending&&event.willContinue!==true&&event.isTerminal!==false)void runtimeRequest('event',{event:{type:'agent_end',summary:handoverText(lastAssistant)||(preview?.role==='assistant'?preview.text:'')}}).catch(()=>{});
+   }
    if(type==='session_shutdown'){closed=true;cancelPreview();if(timer!==null){timerContext.clearTimer(timer);timer=null;}}
   }catch{/* Observability never changes a tool result or blocks the agent. */}
  });

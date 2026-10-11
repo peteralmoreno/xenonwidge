@@ -11,6 +11,18 @@
     if (saved && themes.includes(saved.theme)) preferences.theme = saved.theme;
     if (saved && maps.includes(saved.map)) preferences.map = saved.map;
   } catch {}
+  if (widget === 'omp-bot') {
+    try {
+      if (localStorage.getItem(storageKey) === null) {
+        const legacy = JSON.parse(localStorage.getItem('ranch-desk.appearance'));
+        if (legacy && themes.includes(legacy.theme)) preferences.theme = legacy.theme;
+        if (legacy && maps.includes(legacy.map)) preferences.map = legacy.map;
+        if (legacy && (themes.includes(legacy.theme) || maps.includes(legacy.map))) {
+          localStorage.setItem(storageKey, JSON.stringify(preferences));
+        }
+      }
+    } catch {}
+  }
   function apply() {
     body.dataset.theme = preferences.theme;
     body.dataset.map = preferences.map;

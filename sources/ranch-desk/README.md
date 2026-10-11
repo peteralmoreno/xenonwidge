@@ -1,4 +1,6 @@
-# Ranch Desk
+# Ranch Desk compatibility widget
+
+Ranch Desk is retained for existing installations. New Bot Ranch installs use the integrated Large Ranch view for bot details and task management; a separate Desk widget is not needed.
 
 A Medium companion widget for Bot Ranch. Select one of up to four colored residents to read its current state and latest plain-text conversation excerpt, then use **Open terminal** when needed. Selection syncs through the companion with Bot Ranch; selecting a resident never focuses a window.
 

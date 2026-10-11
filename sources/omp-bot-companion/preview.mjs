@@ -17,3 +17,9 @@ export function branchPreview(entries,now=Date.now()){
  for(let i=entries.length-1;i>=0;i--){if(entries[i]?.type!=='message')continue;const preview=messagePreview(entries[i].message,now);if(preview)return preview;}
  return undefined;
 }
+export function handoverText(message){
+ if(message?.role!=='assistant')return '';
+ const raw=typeof message.content==='string'?message.content:Array.isArray(message.content)?message.content.filter(p=>p?.type==='text'&&typeof p.text==='string').map(p=>p.text).join('\n'):'';
+ let text=raw.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g,' ').trim().slice(0,6000);
+ if(/[\uD800-\uDBFF]$/.test(text))text=text.slice(0,-1);return text.toWellFormed();
+}

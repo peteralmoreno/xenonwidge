@@ -18,7 +18,7 @@ npm ci
 npm run build
 ```
 
-The build stages only explicitly listed source files in a unique temporary directory, validates each widget, packages it using the installed iCUE CLI, and creates complete companion ZIPs. Audio Deck source is staged before locked restore/publish so incidental local configuration cannot enter the application. Bot Ranch includes its setup page and current widget UI. Temporary staging is removed after success or failure; historical artifacts remain untouched.
+The build stages only explicitly listed source files in a unique temporary directory, validates each widget, packages it using the installed iCUE CLI, and creates complete companion ZIPs. Audio Deck source is staged before locked restore/publish so incidental local configuration cannot enter the application. Bot Ranch includes its setup page and current widget UI. Temporary staging is removed after success or failure; generated releases are disposable and can be removed between builds.
 
 | Command | Result |
 | --- | --- |
@@ -26,7 +26,7 @@ The build stages only explicitly listed source files in a unique temporary direc
 | `npm run build:doodle` | Doodle Pad widget |
 | `npm run build:audio` | Audio Deck widget and Windows companion ZIP |
 | `npm run build:desk` | Ranch Desk widget only |
-| `npm run build:ranch` | Bot Ranch + Ranch Desk widgets and companion ZIP |
+| `npm run build:ranch` | Integrated Bot Ranch, legacy Desk compatibility widget, and companion ZIP |
 | `npm run validate:all` | Validate all staged widgets |
 | `npm run build:companion` | Audio Deck companion ZIP only |
 | `npm run build:ranch-companion` | Bot Ranch companion ZIP only |
@@ -46,9 +46,9 @@ Versions come from widget manifests; companion release names match. Rebuilding a
 
 ## Install and run
 
-1. In iCUE's widget section, use the plus/import action to select a generated `.icuewidget`, then add it to a layout. Verify the version and settings on the device.
+1. In iCUE's widget section, import Bot Ranch and choose Large for integrated ranch/task management. The separate Ranch Desk package remains available for existing installations; it is not needed for the integrated flow. Verify the version and settings on the device.
 2. Audio Deck: extract its entire companion ZIP into a writable folder and run `Launch.cmd` (or `bash launch.sh` from Git Bash). Follow its README for pairing. The self-contained executable does not require a separately installed .NET runtime.
-3. Bot Ranch: extract the entire companion ZIP and run `Open Bot Ranch Setup.cmd`. Configure resident project folders, run readiness checks, and pair the widget through setup. Use /login and /model inside an OMP resident terminal when needed. Keep `setup` and `ui` beside the scripts. `Launch-Companion.cmd` opens a diagnostic console.
+3. Bot Ranch: extract the companion ZIP, run `Install botRanch.cmd` once, then open **botRanch** from the Start menu. The stable app location is `%LOCALAPPDATA%\Programs\botRanch`. The launcher opens the Board and reuses a compatible running companion. Configure home, bots and roles in Settings; copy the single Connection key into the widget. Task authoring stays on the companion Board. Runtime claims remain private, and completed tasks enter Review before acceptance as Done.
 
 Runtime data belongs outside the checkout, normally under `%LOCALAPPDATA%`. Bot Ranch stores keys, resident configuration, terminal records and conversation history under `%LOCALAPPDATA%\OmpBot`. Do not share these with releases or reports. Launchers respect existing Windows script policy.
 
@@ -69,6 +69,14 @@ Commit source, tools, tests, docs, root configuration and dependency lock files.
 
 The repository includes the NAudio notice and publishes .NET runtime notices with Audio Deck. External documentation references are listed in [sources](../reference/sources.md). Existing design plans record historical intent; source and this guide define the current build path.
 
-## Large ranch + Medium desk
+## Bot Ranch 0.11.1: one widget and a companion Board
 
-Import Bot Ranch 0.6.0 and Ranch Desk 0.1.0, choose Large for the ranch and Medium for the desk, and pair both with the same companion key. The 0.6.0 companion synchronizes resident selection; selecting does not open a terminal. The desk has an explicit Open terminal button. Older companions support local Desk selection but must be upgraded for shared selection. Extract the entire updated companion ZIP; close the previous companion process before opening the new setup launcher. User OMP terminals can remain open through a companion upgrade.
+Import `bot-ranch-0.11.1.icuewidget` and use the matching `bot-ranch-companion-0.11.1.zip`. Extract the companion and run `Install botRanch.cmd`. Use the botRanch Start menu shortcut thereafter. A pre-0.11 companion needs one manual stop after finishing active work; reopen the stable shortcut. Your saved companion state remains under Local AppData.
+
+Choose **Home folder** in Setup, then **Open task Board** for task creation, assignment, pickup and review. The Board is a dedicated black/neon page. Large/XL Bot Ranch includes its Desk; Tasks only switches that side panel. A separate Ranch Desk widget is unnecessary for this layout and remains available for legacy installations.
+
+Configure roles/model preferences, optional instructions files and saved profiles in Setup. Per session retains context only within one project; project changes start fresh. Clean requires a closed terminal. Retire and close bots before deleting their profiles; history is kept.
+
+Workflow and Bot queues are two views of the same task records. Use the Board for authoring, queue order and dependencies. Ranch dragging is playful and cannot assign, pause, retire or clean a bot.
+
+After upgrading to 0.11.1, restart each existing bot terminal once to load idle work checks. In the Board, choose Bot queues > Check for work, or use the same button in the widget Desk. Automatic pickup performs this check while idle. Held Inbox tasks still require release.

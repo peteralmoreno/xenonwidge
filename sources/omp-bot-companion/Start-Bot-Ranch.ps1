@@ -31,9 +31,9 @@ try {
     $nickname = ($env:OMP_BOT_NICKNAME -replace '[\x00-\x1f\x7f-\x9f]', ' ').Trim()
     if ($nickname.Length -gt 32) { $nickname = $nickname.Substring(0,32) }
     $title = if ($nickname) { 'Bot Ranch - ' + $nickname } else { 'Bot Ranch' }
-    $palette = @('e58d77','68bbc3','ddb55c','a396ca','e78fb3','e8a05b','a8c966','65b58e','729edb','8585d5','bbc5cb','cf7070')
+    $palette = @('e58d77','68bbc3','ddb55c','a396ca','e78fb3','e8a05b','a8c966','65b58e','729edb','8585d5','bbc5cb','cf7070','e4dcad','66d9ce','d976ed','a78362')
     $colorIndex = 0
-    if ($env:OMP_BOT_COLOR -match '^(?:[0-9]|1[01])$') { $colorIndex = [int]$env:OMP_BOT_COLOR }
+    if ($env:OMP_BOT_COLOR -match '^(?:[0-9]|1[0-5])$') { $colorIndex = [int]$env:OMP_BOT_COLOR }
     $accent = $palette[$colorIndex]
     # A dark tint and bright cursor identify the resident while keeping text readable.
     $background = (0..2 | ForEach-Object { [int][Math]::Round(18 + 0.12 * [Convert]::ToInt32($accent.Substring($_ * 2,2),16)) }) -join ','

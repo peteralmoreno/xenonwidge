@@ -4,6 +4,7 @@ import {sanitizePreview} from './preview.mjs';
 import {sanitizeMetadata} from './metadata.mjs';
 const directory=path.dirname(fileURLToPath(import.meta.url));
 const uiRoot=fs.existsSync(path.join(directory,'ui/index.html'))?path.join(directory,'ui'):path.join(directory,'../omp-bot');
+const appVersion=JSON.parse(fs.readFileSync(path.join(uiRoot,'manifest.json'),'utf8')).version;
 const deskRoot=fs.existsSync(path.join(directory,'desk/index.html'))?path.join(directory,'desk'):path.join(directory,'../ranch-desk');
 const deskFiles={'/desk/appearance.js':['appearance.js','text/javascript'],'/desk/':['index.html','text/html'],'/desk/app.js':['app.js','text/javascript'],'/desk/widget.css':['widget.css','text/css'],'/desk/resources/icon.svg':['resources/icon.svg','image/svg+xml']};
 const publicFiles={'/ui/appearance.js':['appearance.js','text/javascript'],'/ui/':['index.html','text/html'],'/ui/app.js':['app.js','text/javascript'],'/ui/sprites.js':['sprites.js','text/javascript'],'/ui/world.js':['world.js','text/javascript'],'/ui/widget.css':['widget.css','text/css'],'/ui/resources/icon.svg':['resources/icon.svg','image/svg+xml']};
@@ -14,23 +15,69 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
  return http.createServer(async(req,res)=>{
   const reply=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET, PUT, POST, OPTIONS','Access-Control-Allow-Private-Network':'true'});res.end(JSON.stringify(body));};
   if(!/^127\.0\.0\.1:\d+$/.test(req.headers.host||''))return reply(403,{error:'Invalid host'});
-  const setupFiles={'/setup/':['index.html','text/html'],'/setup/app.js':['app.js','text/javascript'],'/setup/style.css':['style.css','text/css']};
+  if(manager?.shuttingDown)return reply(503,{error:'Companion is restarting.'});
+  if(req.url.startsWith('/runtime/')){
+   if(!manager)return reply(404,{error:'Task runtime is unavailable.'});
+   if(req.method!=='POST')return reply(404,{error:'Not found'});
+   try{
+    let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>16384)return reply(413,{error:'Runtime request too large'});body+=chunk;}
+    const data=JSON.parse(body),authorization=String(req.headers.authorization||''),token=authorization.startsWith('Bearer ')?authorization.slice(7):'';if(req.url==='/runtime/work'){const result=await manager.pollWork(data?.profileId,data?.launchId,token,data?.idle);return result?reply(200,result):reply(401,{error:'Runtime work check rejected.'});}if(!data||typeof data.profileId!=='string'||typeof data.launchId!=='string'||typeof data.attemptId!=='string')return reply(400,{error:'Invalid runtime request.'});
+    if(req.url==='/runtime/claim'){
+     const task=manager.claimTaskRuntime(data.profileId,data.launchId,data.attemptId,token);return task?reply(200,{task}):reply(409,{error:'This task dispatch is unavailable or already claimed.'});
+    }
+    if(req.url==='/runtime/event'){
+     const ok=manager.recordTaskRuntimeEvent(data.profileId,data.launchId,data.attemptId,token,data.event);return ok?reply(200,{ok:true}):reply(409,{error:'Runtime event rejected.'});
+    }
+    return reply(404,{error:'Not found'});
+   }catch{return reply(400,{error:'Invalid runtime request.'});}
+  }
+  const setupFiles={'/board/':['board.html','text/html'],'/setup/board.js':['board.js','text/javascript'],'/setup/board.css':['board.css','text/css'],'/setup/':['index.html','text/html'],'/setup/app.js':['app.js','text/javascript'],'/setup/style.css':['style.css','text/css'],'/setup/settings.css':['settings.css','text/css']};
   if(req.method==='GET'&&Object.hasOwn(setupFiles,req.url)){try{const [file,type]=setupFiles[req.url];res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'"});res.end(fs.readFileSync(path.join(directory,'setup',file)));}catch{res.end('Setup files missing. Re-extract the complete companion.');}return;}
   if(req.url.startsWith('/admin/')){
    const a=Buffer.from(req.headers.authorization||''),b=Buffer.from('Bearer '+(adminKey||''));
    if(!adminKey||!manager||a.length!==b.length||!timingSafeEqual(a,b))return reply(401,{error:'Open setup using the Bot Ranch launcher.'});
    if(req.headers.origin&&req.headers.origin!=='http://'+req.headers.host)return reply(403,{error:'Setup must be opened on this companion.'});
    try{
-    if(req.method==='GET'&&req.url==='/admin/state')return reply(200,manager.view());
+    if(req.method==='GET'&&req.url==='/admin/state')return reply(200,{...manager.view(),appVersion,restartSupported:true});
+    if(req.method==='POST'&&req.url==='/admin/shutdown'){if(manager.reconciling||manager.locks.size||manager.taskLocks.size||manager.view().profiles.some(p=>p.activityBusy)||manager.tasks.some(t=>t.attempts?.some(a=>['dispatching','awaiting-runtime','claimed','running','unresolved'].includes(a.state))))return reply(409,{error:'Finish active work before updating the companion. Your terminals were left running.'});manager.shuttingDown=true;manager.persist();reply(200,{ok:true});const server=req.socket.server;setImmediate(()=>{server.emit('companion-shutdown');server.close();server.closeIdleConnections?.();});return;}
     if(req.method==='GET'&&req.url==='/admin/checks')return reply(200,{checks:await manager.checks()});
     if(req.method==='GET'&&req.url==='/admin/key')return reply(200,{key});
+    if(req.method==='POST'&&req.url==='/admin/control-key')return reply(200,{controlKey:manager.provisionControlKey()});
+    if(req.method==='POST'&&req.url==='/admin/control-key/revoke'){manager.revokeControlKey();return reply(200,{ok:true});}
     if(req.method!=='POST')return reply(404,{error:'Not found'});
-    let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>4096)return reply(413,{error:'Request too large'});body+=chunk;}
-    const data=JSON.parse(body);if(req.url==='/admin/profile')return reply(200,manager.saveProfile(data));
-    if(req.url==='/admin/settings'){manager.setSleep(data.sleepSeconds);return reply(200,{ok:true});}
+    let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>32768)return reply(413,{error:'Request too large'});body+=chunk;}
+    const data=JSON.parse(body);if(req.url==='/admin/profile/check-work')return reply(200,manager.requestWorkCheck(data.id));if(req.url==='/admin/profile/delete')return reply(200,await manager.deleteProfile(data.id,data.expectedRevision));if(req.url==='/admin/profile/clean')return reply(200,await manager.cleanProfile(data.id));if(req.url==='/admin/library/import')return reply(200,manager.importProfiles());if(req.url==='/admin/role')return reply(200,manager.saveRole(data));if(req.url==='/admin/pickup')return reply(200,manager.setPickupPaused(data.paused));if(req.url==='/admin/task/start')return reply(200,await manager.dispatchTask(data.taskId,data.profileId,data.expectedRevision));if(req.url==='/admin/profile')return reply(200,manager.saveProfile(data));
+    if(req.url==='/admin/settings'){if(data.homeFolder!==undefined)manager.setHome(data.homeFolder);if(data.sleepSeconds!==undefined)manager.setSleep(data.sleepSeconds);return reply(200,{ok:true});}
     if(req.url==='/admin/action')return reply(200,await manager.action(data.id,data.action,data.confirmed===true));
+    if(req.url==='/admin/task/queue')return reply(200,manager.queueTask(data));if(req.url==='/admin/task/stop')return reply(200,await manager.stopTask(data.id,data.confirmed,data.expectedAttemptId));if(req.url==='/admin/task')return reply(200,manager.saveTask(data));
+    if(req.url==='/admin/task/archive')return reply(200,manager.archiveTask(data.id,data.expectedRevision));
+    if(req.url==='/admin/task/retry')return reply(200,await manager.prepareTaskRetry(data.id,data.expectedRevision));
+    if(req.url==='/admin/task/review')return reply(200,manager.reviewTask(data.id,data.expectedRevision,data.action,data.note));
+    if(req.url==='/admin/membership')return reply(200,manager.setMembership(data.id,data.active,data.expectedRevision));
     return reply(404,{error:'Not found'});
-   }catch(e){return reply(e.code==='confirmation'?409:400,{error:e.message,confirmation:e.code==='confirmation'});}
+   }catch(e){return reply(['confirmation','conflict'].includes(e.code)?409:400,{error:e.message,confirmation:e.code==='confirmation'});}
+  }
+  if(req.url.startsWith('/control/')){
+   // Browser preflights carry no bearer key. Authorize the actual request below.
+   if(req.method==='OPTIONS')return reply(204,null);
+   const provided=Buffer.from(req.headers.authorization||'').toString().replace(/^Bearer /,'');
+   const supplied=Buffer.from(provided),connection=Buffer.from(key);if(!manager||!(supplied.length===connection.length&&timingSafeEqual(supplied,connection))&&!manager.authorizeControl(provided))return reply(401,{error:'Connection key rejected. Copy it from botRanch Settings.'});
+   try{
+    if(req.method==='GET'&&req.url==='/control/state')return reply(200,manager.view());
+    if(req.method==='GET'&&req.url==='/control/tasks')return reply(200,manager.taskList());
+    if(req.method!=='POST')return reply(404,{error:'Not found'});
+    let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>32768)return reply(413,{error:'Request too large'});body+=chunk;}
+    const data=JSON.parse(body);
+    if(req.url==='/control/task/queue')return reply(200,manager.queueTask(data));if(req.url==='/control/task/stop')return reply(200,await manager.stopTask(data.id,data.confirmed,data.expectedAttemptId));if(req.url==='/control/task')return reply(200,manager.saveTask(data));
+    if(req.url==='/control/task/archive')return reply(200,manager.archiveTask(data.id,data.expectedRevision));
+    if(req.url==='/control/task/retry')return reply(200,await manager.prepareTaskRetry(data.id,data.expectedRevision));
+    if(req.url==='/control/task/review')return reply(200,manager.reviewTask(data.id,data.expectedRevision,data.action,data.note));
+    if(req.url==='/control/membership')return reply(200,manager.setMembership(data.id,data.active,data.expectedRevision));
+    if(req.url==='/control/pickup')return reply(200,manager.setPickupPaused(data.paused));
+    if(req.url==='/control/profile'){const profile=manager.profiles.find(p=>p.id===data.id);if(!profile)return reply(404,{error:'Unknown resident.'});return reply(200,manager.saveProfile({...profile,...data}));}
+    if(req.url==='/control/profile/check-work')return reply(200,manager.requestWorkCheck(data.id));if(req.url==='/control/profile/clean')return reply(200,await manager.cleanProfile(data.id));if(req.url==='/control/task/start')return reply(200,await manager.dispatchTask(data.taskId,data.profileId,data.expectedRevision));
+    return reply(404,{error:'Not found'});
+   }catch(e){return reply(e.code==='conflict'?409:400,{error:e.message});}
   }
   if(req.method==='GET'&&Object.hasOwn(deskFiles,req.url)){const [file,type]=deskFiles[req.url];try{res.writeHead(200,{'Content-Type':type+'; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'});res.end(fs.readFileSync(path.join(deskRoot,file)));}catch{res.end('Ranch Desk files missing. Re-extract the complete companion.');}return;}
   if(req.method==='GET'&&Object.hasOwn(publicFiles,req.url)){

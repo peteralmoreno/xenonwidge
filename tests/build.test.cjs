@@ -18,7 +18,7 @@ test('release staging includes complete source UI and excludes private or genera
     stageRanch(source, output);
     for (const file of ['pairing-key.txt', 'admin-key.txt', 'ranch.json', '.env', 'unexpected.mjs', 'sessions']) assert.equal(fs.existsSync(path.join(output, file)), false, file);
     for (const file of widgetFiles.ranch) assert.deepEqual(fs.readFileSync(path.join(output, 'ui', file)), fs.readFileSync(path.join(source, projects.ranch.source, file)));
-    for (const file of ['desk/index.html', 'desk/app.js', 'desk/widget.css', 'desk/resources/icon.svg', 'setup/index.html', 'setup/app.js', 'setup/style.css', 'Open Bot Ranch Setup.cmd', 'Terminal-Control.ps1', 'extension.mjs']) assert.ok(fs.statSync(path.join(output, file)).isFile(), file);
+    for (const file of ['desk/index.html', 'desk/app.js', 'desk/widget.css', 'desk/resources/icon.svg', 'setup/index.html', 'setup/app.js', 'setup/style.css', 'setup/settings.css', 'release.json', 'install.mjs', 'companion-start.mjs', 'Install-Shortcut.ps1', 'Install botRanch.cmd', 'Open botRanch.cmd', 'Open Bot Ranch Setup.cmd', 'Terminal-Control.ps1', 'extension.mjs', 'runtime-policy.mjs', 'bot-library.mjs', 'queue-policy.mjs', 'work-check.mjs', 'terminal-runner.mjs', 'setup/board.html', 'setup/board.js', 'setup/board.css']) assert.ok(fs.statSync(path.join(output, file)).isFile(), file);
     const second = path.join(temporary, 'second');
     stageRanch(source, second);
     const files = fs.readdirSync(output, { recursive: true }).filter(f => fs.statSync(path.join(output, f)).isFile()).sort();

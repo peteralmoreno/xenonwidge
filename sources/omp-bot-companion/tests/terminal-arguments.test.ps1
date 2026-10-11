@@ -11,7 +11,7 @@ foreach ($example in $examples) {
     $start = New-Object Diagnostics.ProcessStartInfo
     $start.FileName = (Get-Command node.exe).Source
     $start.Arguments = ((@('-e', 'process.stdout.write(JSON.stringify(process.argv.slice(1)))', '--', $example) | ForEach-Object { ConvertTo-NativeArgument $_ }) -join ' ')
-    $start.UseShellExecute = $false; $start.CreateNoWindow = $true; $start.RedirectStandardOutput = $true
+    $start.UseShellExecute = $false; $start.CreateNoWindow = $true; $start.RedirectStandardOutput = $true; $start.StandardOutputEncoding = [Text.Encoding]::UTF8
     $process = [Diagnostics.Process]::Start($start)
     $output = $process.StandardOutput.ReadToEnd(); $process.WaitForExit()
     $received = ConvertFrom-Json $output

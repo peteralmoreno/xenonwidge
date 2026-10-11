@@ -8,7 +8,7 @@ test('Large ranch and Medium desk share selection without opening terminals; act
   await ranch.setViewportSize({width:1688,height:696});await desk.setViewportSize({width:840,height:696});await ranch.goto(url+'/ui/#pair='+'a'.repeat(64));await desk.goto(url+'/desk/#pair='+'a'.repeat(64));
   await expect(ranch.locator('.station')).toHaveCount(4);await expect(ranch.locator('.bot').nth(0)).toHaveAttribute('data-station','reading');await expect(ranch.locator('.bot').nth(3)).toHaveAttribute('data-station','bell');
   await ranch.locator('.bot').nth(2).click();await expect(desk.locator('#name')).toHaveText('Maple');expect(focused).toBe(0);
-  await desk.getByRole('button',{name:'Clover, Researching',exact:true}).click();await expect(ranch.locator('.bot').nth(1)).toHaveAttribute('aria-pressed','true');expect(focused).toBe(0);
+  await desk.getByRole('button',{name:'Clover, Researching',exact:true}).click();await expect(ranch.locator('.bot').nth(2)).toHaveAttribute('aria-pressed','true');expect(focused).toBe(0);
   await desk.getByRole('button',{name:'Open terminal',exact:true}).click();await expect.poll(()=>focused).toBe(1);
   await ranch.getByRole('button',{name:'Quiet mode',exact:true}).click();await expect(ranch.locator('body')).toHaveAttribute('data-quiet','on');await expect(ranch.locator('.bot').nth(3).locator('.activity')).toHaveText('Needs you');
   await ranch.screenshot({path:'artifacts/bot-ranch/cozy-large-preview.png'});await desk.screenshot({path:'artifacts/bot-ranch/desk-preview.png'});

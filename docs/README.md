@@ -40,6 +40,5 @@ Record the exact device model, installed iCUE version, desired information/actio
 ## Bot Ranch
 
 - [Install and use](../sources/omp-bot/README.md).
-- [Design, implementation and API sources](guides/omp-bot-plan.md).
 - [Central companion](../sources/omp-bot-companion/README.md).
 - [Build current releases](guides/build-and-import.md).
