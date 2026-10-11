@@ -27,3 +27,15 @@ test('local desk selection stays pinned; visual drops only select when released 
  const desk=await page.locator('#ranch-desk').boundingBox();await second.evaluate((el,point)=>{el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:22,pointerType:'touch',isPrimary:true,clientX:point.x,clientY:point.y}));el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:22,pointerType:'touch',isPrimary:true,clientX:point.x+50,clientY:point.y+25}));el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:22,pointerType:'touch',isPrimary:true,clientX:point.x+50,clientY:point.y+25}));},{x:desk.x+desk.width/2,y:desk.y+desk.height/2});
  await expect(second).toHaveAttribute('aria-pressed','true');await expect(page.locator('#desk-more')).toHaveAttribute('open','');await expect.poll(()=>requests.length).toBe(2);expect(requests.every(r=>r.path==='/selection')).toBe(true);
 });
+
+
+test('expired Done clears selected status while preserving completion details and newer activity',async({page})=>{
+ const session={id:'finished-bot',project:'Clover',state:'done',label:'Completed the task',finishedAt:Date.now()-181000,lastSeen:Date.now()};
+ await page.addInitScript(()=>localStorage.setItem('omp-bot.key','a'.repeat(64)));
+ await page.route('http://127.0.0.1:43822/**',r=>{const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET, POST, OPTIONS'};return r.fulfill({status:r.request().method()==='OPTIONS'?204:200,headers,json:{app:'omp-bot',version:1,sessions:[session]}});});
+ await page.route('http://ranch.test/**',r=>r.fulfill({path:path.join(__dirname,'../sources/omp-bot',new URL(r.request().url()).pathname==='/'?'index.html':new URL(r.request().url()).pathname)}));
+ await page.goto('http://ranch.test/');await page.locator('.bot').click();
+ await expect(page.locator('#state')).toHaveText('Ready');await expect(page.locator('#detail')).toHaveText('Ready');
+ await page.locator('#project').click();await expect(page.locator('#full-status')).toHaveText('Completed the task');await page.locator('#details-close').click();
+ session.state='waiting';session.label='Needs your answer';await expect(page.locator('#state')).toHaveText('Needs you');await expect(page.locator('#detail')).toHaveText('Needs your answer');
+});

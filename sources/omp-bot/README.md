@@ -1,14 +1,15 @@
-# Bot Ranch 0.11.1
+# Bot Ranch 0.12.0
 
 Bot Ranch is a Large overhead ranch widget with an integrated Tasks view and bot details. It connects to one local companion that keeps resident profiles, project tasks, preferences, and existing terminal-session records. The widget's management workflow is designed for the Large layout; physical display fit still needs device validation.
 
 ## Start
 
-1. Build with `npm ci`, then `npm run build:ranch` from the repository root. See [build and import](../../docs/guides/build-and-import.md).
-2. Extract the companion ZIP and run `Install botRanch.cmd` once. Thereafter open **botRanch** from the Start menu.
-3. Add bot profiles with project folders, colors, role, model preference, context policy, pickup setting, and read-only request. The active ranch shows up to six profiles; saved Bot Bank profiles retain their identity and settings.
-4. Import Bot Ranch into iCUE, choose Large, and pair it with the status key from setup. In iCUE, allow `127.0.0.1:43822` under Settings > Software Settings > Widget Access.
-5. Open Settings > Connection. Paste the single connection key into the widget's Connect dialog for activity and management controls.
+1. For a new Windows PC, follow the [Bot Ranch install guide](../../docs/guides/bot-ranch-install.md), which covers prerequisites, building or installing the matching release, the companion, OMP, Bot home, and iCUE pairing.
+2. Build with `npm ci`, then `npm run build:ranch` from the repository root when building from source.
+3. Extract the companion ZIP and run `Install botRanch.cmd` once. Thereafter open **botRanch** from the Start menu.
+4. Add bot profiles with project folders, colors, role, model preference, context policy, pickup setting, and read-only request. The active ranch shows up to six profiles; saved Bot Bank profiles retain their identity and settings.
+5. Import Bot Ranch into iCUE, choose Large, and pair it with the single Connection key from Setup. In iCUE, allow `127.0.0.1:43822` under Settings > Software Settings > Widget Access.
+6. Open Settings > Connection. Paste the single connection key into the widget's Connect dialog for activity and management controls.
 
 ## Use
 
@@ -42,7 +43,7 @@ Colors set a resident's relative walking pace. These are baseline pixels per sec
 
 ## Runtime and privacy
 
-Windows, Node 20+, Git for Windows/Git Bash, and compatible Oh My Pi are required to run managed terminals. OMP and provider authentication are runtime requirements. Setup readiness checks do not verify provider login or send model prompts.
+Windows, Node 20+, Git for Windows/Git Bash, Bun 1.3.14+, and compatible Oh My Pi are required to run managed terminals. OMP and provider authentication are runtime requirements. Setup readiness checks do not verify provider login or send model prompts.
 
 The connection key authorizes status, focus, and widget bot/task controls. Setup credentials and per-launch runtime credentials stay private and automatic; no arbitrary shell-command endpoint is exposed. Legacy management tokens remain supported for older widgets.
 
@@ -51,7 +52,7 @@ The OMP extension sends up to 400 characters of the latest visible user/assistan
 Ranch Desk remains in the release as a compatibility widget for existing installs and is not required for the integrated Ranch workflow.
 
 
-## Playful ranch and work queues (0.11.1)
+## Playful ranch and work queues (0.12.0)
 
 Ranch pokes and dragging only affect appearance/inspection. Drop a bot on the Desk to inspect it; use explicit controls to change work. The pinned Desk prioritizes Now, Next and Needs you, with expandable statistics. Personality changes presentation independently of work role.
 

@@ -39,7 +39,7 @@ header{min-height:44px}.brand{gap:10px}h1{font-size:calc(1.35rem + 4px);letter-s
 .bot[data-celebrate=true] .robot{animation:jump .4s steps(3,end) 2}
 .bot[data-activity=waiting] .badge,.bot[data-activity=error] .badge{animation:notice 1.5s steps(2,end) infinite}
 .hammer,.nap,.celebration{display:none}
-.bot[data-mode=work][data-activity=running] .hammer,.bot[data-mode=work][data-activity=working] .hammer{display:block;transform-origin:46px 42px}
+.bot[data-mode=work][data-activity=running] .hammer,.bot[data-mode=work][data-activity=thinking] .hammer,.bot[data-mode=work][data-activity=working] .hammer{display:block;transform-origin:46px 42px}
 .bot[data-hammering=true] .hammer{animation:hammer .7s steps(3,end) infinite}
 .bot[data-celebrate=true] .celebration{display:block;animation:sparkle .45s steps(2,end) 2}
 .bot[data-mode=sleep] .nap{display:block}.bot[data-mode=sleep] .eye{height:1px}.bot[data-mode=sleep] .prop,.bot[data-mode=sleep] .badge{display:none}

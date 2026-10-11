@@ -56,7 +56,7 @@ test('Large Ranch keeps tasks in the Desk and delegates authoring, role models, 
  const {dir,manager,server,url}=await serverFixture(native);
  try{
   const profile=manager.saveProfile({nickname:'Brick',folder:dir,color:0,role:'researcher',preferredModel:'claude'});
-  manager.runs[profile.id]={launchId:'launch',status:'connected',pid:321,started:'638000000000000000',requestedAt:Date.now()};
+  manager.runs[profile.id]={launchId:'launch',status:'connected',pid:321,started:'638000000000000000',requestedAt:Date.now(),runtimeKeyHash:'c'.repeat(64)};
   manager.observe({id:'session',profileId:profile.id,launchId:'launch',terminal:{pid:321,started:'638000000000000000'},state:'writing',label:'Writing files',startedAt:Date.now(),finishedAt:null,metadata:{provider:'Claude',model:'configured-model',context:{used:40,capacity:100}},preview:{role:'assistant',text:'Visible result excerpt',at:Date.now()}});
   const controlKey=manager.provisionControlKey();
   await page.goto(url+'/ui/#pair='+'a'.repeat(64));
@@ -79,7 +79,7 @@ test('Large Ranch keeps tasks in the Desk and delegates authoring, role models, 
   await expect(page.locator('#desk-role')).toHaveText('researcher');
   await expect(page.locator('#desk-model')).toContainText('configured-model');
   await expect(page.locator('#desk-context')).toContainText('40 / 100');
-  await expect(page.locator('#desk-preview')).toHaveText('Visible result excerpt');
+  await expect(page.locator('#desk-preview')).toHaveText('Visible result excerpt');await expect(page.locator('#desk-check-work')).toHaveText('Poke / Check for tasks');await page.locator('#desk-check-work').click();await expect(page.locator('#focus-result')).toContainText('when idle');expect(manager.runs[profile.id].checkRequested).toBe(true);expect(manager.profiles.find(p=>p.id===profile.id).autoPickup).toBe(false);
   const scene=await page.locator('#scene').boundingBox(),desk=await page.locator('#ranch-desk').boundingBox();
   expect(desk.x).toBeGreaterThan(scene.x+scene.width);
   expect(scene.width/scene.height).toBeLessThanOrEqual(2.96);

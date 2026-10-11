@@ -1,4 +1,4 @@
-# Bot Ranch Central Companion 0.11.1
+# Bot Ranch Central Companion 0.12.0
 
 Run `Install botRanch.cmd` once. It installs under `%LOCALAPPDATA%\Programs\botRanch` and creates the **botRanch** Start menu shortcut. That shortcut starts or reuses the companion and opens the Board. Updates retain prior app versions internally, with one stable launcher. Your selected bot home and existing settings remain separate. Older releases without restart support need one manual companion stop during migration; newer idle companions can restart for an update. Active work blocks replacement.
 
@@ -35,7 +35,7 @@ Old `Start-OMP` and `Start-Bot-Ranch` launch scripts remain for compatibility; u
 Build with `npm run build:ranch` from the repository root. Releases are under `artifacts/releases/bot-ranch`. See the [build guide](../../docs/guides/build-and-import.md) and the [widget README](../omp-bot/README.md).
 
 
-## Playful ranch and work queues (0.11.1)
+## Playful ranch and work queues (0.12.0)
 
 Ranch pokes and dragging only affect appearance/inspection. Drop a bot on the Desk to inspect it; use explicit controls to change work. The pinned Desk prioritizes Now, Next and Needs you, with expandable statistics. Personality changes presentation independently of work role.
 
@@ -48,3 +48,12 @@ Idle work checks: **Check for work** on the Desk or Board > Bot queues requests 
 ## Settings and home folders
 
 Settings is organized into Home & folders, Bots, Roles, Connection, and Diagnostics. Saving a home initializes `bots`, `roles`, `tasks`, `sessions`, and `handovers`, plus a `botRanch.md` guide. Existing files and a customized guide are preserved. Archived task records stay in `tasks`; archive is a state, not a separate directory.
+
+
+## 0.12.0 Board flow
+
+Successful authenticated task completions are accepted automatically unless **Human review** is enabled on that task. Existing tasks already in Review migrate with Human review enabled; partial updates from older clients preserve the saved policy. Failed and unresolved attempts stay blocked. Task details show whether acceptance was automatic or human.
+
+Follow-up creates a separate released task that inherits the project, family, bot assignment, model/effort request and review policy. The new task depends on parent acceptance and retains its own attempt history while the parent's history stays intact.
+
+Task families use a fixed palette and remain visually consistent across Workflow and Bot queues. Compact cards open an accessible full details dialog. Thinking uses the workshop animation, Desk exposes **Poke / Check for tasks**, and the transient Done presentation expires after three minutes. These presentation changes do not modify task execution or pickup safety.

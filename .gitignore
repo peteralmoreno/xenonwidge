@@ -20,6 +20,8 @@ playwright-report/
 **/ranch.json.*
 **/sessions/
 **/terminals/
+**/bot-home/
+**/handovers/
 *.user
 .vs/
 .DS_Store

@@ -48,9 +48,11 @@ Versions come from widget manifests; companion release names match. Rebuilding a
 
 1. In iCUE's widget section, import Bot Ranch and choose Large for integrated ranch/task management. The separate Ranch Desk package remains available for existing installations; it is not needed for the integrated flow. Verify the version and settings on the device.
 2. Audio Deck: extract its entire companion ZIP into a writable folder and run `Launch.cmd` (or `bash launch.sh` from Git Bash). Follow its README for pairing. The self-contained executable does not require a separately installed .NET runtime.
-3. Bot Ranch: extract the companion ZIP, run `Install botRanch.cmd` once, then open **botRanch** from the Start menu. The stable app location is `%LOCALAPPDATA%\Programs\botRanch`. The launcher opens the Board and reuses a compatible running companion. Configure home, bots and roles in Settings; copy the single Connection key into the widget. Task authoring stays on the companion Board. Runtime claims remain private, and completed tasks enter Review before acceptance as Done.
+3. Bot Ranch: follow the dedicated [new-PC install guide](bot-ranch-install.md). It covers prerequisites, source and release installs, the central companion, Bot home, OMP runtime checks, iCUE pairing, and first-run verification. The short path is to extract the matching companion ZIP, run `Install botRanch.cmd` once, open **botRanch** from Start, configure the home and profiles, then paste the single Connection key into the widget.
 
-Runtime data belongs outside the checkout, normally under `%LOCALAPPDATA%`. Bot Ranch stores keys, resident configuration, terminal records and conversation history under `%LOCALAPPDATA%\OmpBot`. Do not share these with releases or reports. Launchers respect existing Windows script policy.
+Runtime data belongs outside the checkout, normally under `%LOCALAPPDATA%\OmpBot`. Bot Ranch stores keys, resident configuration, terminal records and conversation history under `%LOCALAPPDATA%\OmpBot`. Do not share these with releases or reports. Launchers respect existing Windows script policy.
+
+The detailed Bot Ranch guide is the source of truth for a fresh-PC install; this page remains the cross-project build and verification reference.
 
 ## Verification
 
@@ -69,9 +71,9 @@ Commit source, tools, tests, docs, root configuration and dependency lock files.
 
 The repository includes the NAudio notice and publishes .NET runtime notices with Audio Deck. External documentation references are listed in [sources](../reference/sources.md). Existing design plans record historical intent; source and this guide define the current build path.
 
-## Bot Ranch 0.11.1: one widget and a companion Board
+## Bot Ranch 0.12.0: one widget and a companion Board
 
-Import `bot-ranch-0.11.1.icuewidget` and use the matching `bot-ranch-companion-0.11.1.zip`. Extract the companion and run `Install botRanch.cmd`. Use the botRanch Start menu shortcut thereafter. A pre-0.11 companion needs one manual stop after finishing active work; reopen the stable shortcut. Your saved companion state remains under Local AppData.
+Import `bot-ranch-0.12.0.icuewidget` and use the matching `bot-ranch-companion-0.12.0.zip`. Extract the companion and run `Install botRanch.cmd`. Use the botRanch Start menu shortcut thereafter. A pre-0.12 companion may need one manual stop after finishing active work; reopen the stable shortcut. Your saved companion state remains under Local AppData. For a complete fresh-PC sequence, use the [Bot Ranch install guide](bot-ranch-install.md).
 
 Choose **Home folder** in Setup, then **Open task Board** for task creation, assignment, pickup and review. The Board is a dedicated black/neon page. Large/XL Bot Ranch includes its Desk; Tasks only switches that side panel. A separate Ranch Desk widget is unnecessary for this layout and remains available for legacy installations.
 
@@ -79,4 +81,4 @@ Configure roles/model preferences, optional instructions files and saved profile
 
 Workflow and Bot queues are two views of the same task records. Use the Board for authoring, queue order and dependencies. Ranch dragging is playful and cannot assign, pause, retire or clean a bot.
 
-After upgrading to 0.11.1, restart each existing bot terminal once to load idle work checks. In the Board, choose Bot queues > Check for work, or use the same button in the widget Desk. Automatic pickup performs this check while idle. Held Inbox tasks still require release.
+After upgrading to 0.12.0, restart each existing bot terminal once to load idle work checks. In the Board, choose Bot queues > Check for work, or use the same button in the widget Desk. Automatic pickup performs this check while idle. Held Inbox tasks still require release.

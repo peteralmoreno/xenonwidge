@@ -2,8 +2,8 @@
  const workActivities=['reading','researching','writing','thinking','running','working'];
  const work=new Set(workActivities),paceMultiplier=1.15;
  const maps={
-  meadow:{stations:{reading:{x:25,y:28},researching:{x:75,y:28},writing:{x:25,y:72},workshop:{x:75,y:72},bell:{x:50,y:50}},workRoutes:{reading:'reading',researching:'researching',writing:'writing',thinking:'researching',running:'workshop',working:'workshop'}},
-  courtyard:{stations:{reading:{x:25,y:28},researching:{x:75,y:72},writing:{x:75,y:28},workshop:{x:25,y:72},bell:{x:50,y:50}},workRoutes:{reading:'reading',researching:'researching',writing:'writing',thinking:'researching',running:'workshop',working:'workshop'}}
+  meadow:{stations:{reading:{x:25,y:28},researching:{x:75,y:28},writing:{x:25,y:72},workshop:{x:75,y:72},bell:{x:50,y:50}},workRoutes:{reading:'reading',researching:'researching',writing:'writing',thinking:'workshop',running:'workshop',working:'workshop'}},
+  courtyard:{stations:{reading:{x:25,y:28},researching:{x:75,y:72},writing:{x:75,y:28},workshop:{x:25,y:72},bell:{x:50,y:50}},workRoutes:{reading:'reading',researching:'researching',writing:'writing',thinking:'workshop',running:'workshop',working:'workshop'}}
  };
  function validateMap(map){
   if(!map||typeof map!=='object'||!map.stations||typeof map.stations!=='object'||!map.workRoutes||typeof map.workRoutes!=='object')throw Error('Invalid map: stations and work routes are required.');
@@ -14,6 +14,7 @@
  for(const map of Object.values(maps))validateMap(map);
  function resolveMap(map){const result=typeof map==='string'?maps[map]:map;if(!result)throw Error('Invalid map: unsupported map definition.');validateMap(result);return result;}
  function mode(s,now,sleep=120){if(!s||s.state==='offline')return 'offline';if(work.has(s.state))return 'work';if(s.state==='waiting'||s.state==='error')return s.state;const idle=s.state==='done'?(s.finishedAt||s.idleSince||now):(s.idleSince||now);return now-idle>=sleep*1000?'sleep':'idle';}
+ function present(s,now,observed=new Map()){if(!s)return s;const key=s.id||s.profileId||s;if(s.state!=='done'){if(work.has(s.state)||s.state==='waiting'||s.state==='error')observed.delete(key);return s;}let finished=s.finishedAt;if(!Number.isFinite(finished)){finished=observed.get(key);if(!Number.isFinite(finished)){finished=now;observed.set(key,finished);}}return now-finished>=180000?{...s,state:'ready',label:'Ready',presentationExpired:true}:s;}
  const docks=[{x:9.25,y:10.8},{x:90.75,y:10.8},{x:9.25,y:89.2},{x:90.75,y:89.2},{x:9.25,y:50},{x:90.75,y:50}];
  const homes=[{x:18,y:25},{x:82,y:25},{x:18,y:75},{x:82,y:75},{x:18,y:50},{x:82,y:50}],stations=[{x:36,y:25},{x:64,y:25},{x:36,y:75},{x:64,y:75}];
  // Pixel speeds are color traits. The modest pace increase applies equally
@@ -44,5 +45,5 @@
  }
 
  function mapLayout(map='meadow'){const active=resolveMap(map);return Object.fromEntries(Object.entries(active.stations).map(([name,point])=>[name,{left:point.x+'%',top:point.y+'%'}]));}
- const api={mode,step,homes,stations,docks,traits,paceMultiplier,maps,validateMap,mapLayout};if(typeof module!=='undefined')module.exports=api;else root.RanchWorld=api;
+ const api={mode,present,step,homes,stations,docks,traits,paceMultiplier,maps,validateMap,mapLayout};if(typeof module!=='undefined')module.exports=api;else root.RanchWorld=api;
 })(globalThis);

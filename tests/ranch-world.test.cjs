@@ -24,8 +24,14 @@ test('work activities change destinations immediately and attention goes to the 
  bot.session.state='researching';step(bot,'work',1,0,true,450,90,1650,90);assert.equal(bot.station,'researching');assert.ok(bot.position.x>reading.x+30);
  bot.session.state='writing';step(bot,'work',2,0,true,450,90,1650,90);assert.equal(bot.station,'writing');assert.ok(bot.position.y>reading.y+30);
  bot.session.state='running';step(bot,'work',3,0,true,450,90,1650,90);assert.equal(bot.hammering,true);
+ bot.session.state='thinking';step(bot,'work',3.5,0,true,450,90,1650,90);assert.equal(bot.station,'workshop');assert.equal(bot.hammering,true);
  step(bot,'waiting',4,0,true,450,90,1650,90);assert.equal(bot.station,'bell');assert.ok(Math.abs(bot.position.y-50)<1);
  const positions=[];for(let slot=0;slot<4;slot++){const b={slot,session:{state:'reading'}};step(b,'work',0,0,true,450,90,1650,90);positions.push(b.position.x);}assert.equal(new Set(positions).size,4);
+});
+test('Done presentation expires at three minutes without changing task state or resetting missing timestamps',()=>{
+ const {present,mode}=require('../sources/omp-bot/world.js'),seen=new Map();const done={id:'bot-1',state:'done',finishedAt:1000};assert.equal(present(done,180999,seen).state,'done');const expired=present(done,181000,seen);assert.equal(expired.state,'ready');assert.equal(expired.presentationExpired,true);assert.equal(mode(expired,181000,120),'idle');assert.equal(done.state,'done');
+ const unknown={id:'bot-2',state:'done'};assert.equal(present(unknown,5000,seen).state,'done');assert.equal(present({...unknown},184999,seen).state,'done');assert.equal(present({id:'bot-2',state:'offline'},184999,seen).state,'offline');assert.equal(present({...unknown},185000,seen).state,'ready');assert.equal(present({id:'bot-2',state:'running'},190000,seen).state,'running');assert.equal(present({id:'bot-2',state:'done'},200000,seen).state,'done');assert.equal(present({id:'bot-2',state:'offline'},201000,seen).state,'offline');assert.equal(present({id:'bot-2',state:'done'},202000,seen).state,'done');
+ assert.equal(mode({state:'waiting',finishedAt:1000},200000,120),'waiting');assert.equal(present({id:'bot-3',state:'done',finishedAt:2000},3000,seen).state,'done');
 });
 test('disconnected bots return to corner charging docks',()=>{
  const {step}=require('../sources/omp-bot/world.js');for(let slot=0;slot<4;slot++){

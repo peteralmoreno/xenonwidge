@@ -269,7 +269,7 @@ R3. Companion offers Workflow and Bot queues views of the same task records. Inb
 R4. Tasks can be assigned to one bot or a shared pool. Assignment appends; reorder is explicit and revision checked. Assigned ready work precedes shared work; a blocked assigned head is explained and not silently bypassed.
 R5. Explicit dependencies wait for accepted Done; order alone is not a dependency. Reject missing dependencies and cycles.
 R6. Finish then rest affects only future pickup. Stop requires confirmation and verified runtime closure. Changes to role/context/model apply to subsequent attempts. Cleanup preserves saved history.
-R7. Role determines work instructions/model; visual personality is independent. Completion remains Review until accepted, and handover evidence must reflect actual reported results.
+R7. Role determines work instructions/model; visual personality is independent. The 0.12.0 amendment supersedes mandatory review: successful completions are accepted automatically unless the task opts into Human review; handover evidence reflects reported results and acceptance provenance.
 
 I1. Gestures do not call work-mutation endpoints. I2. Active/unresolved attempts cannot be reassigned/edited/archived. I3. Claims use settings snapshotted at launch. I4. Stale queue revisions cannot overwrite another move. I5. A stop request is never presented as successful before closure is verified.
 
@@ -303,12 +303,31 @@ Verification for 0.11.0: 105 unit tests and 53 browser tests passed; native colo
 
 ### Near-term fix: Thinking uses working animation (2026-10-10)
 
-Status: planned, not implemented. User requests that a thinking bot look visibly at work. Keep the truthful Thinking status and runtime state, but map thinking to the same workshop action and working animation as working/running rather than the research-station presentation. Apply to both ranch maps, preserving quiet mode, reduced motion and animation pause. This is presentation only: no changes to task pickup, busy detection, interruption or context. Verify that a thinking bot visibly performs the working action with normal motion enabled and still displays Thinking in its status/details.
+Implemented in 0.12.0. Thinking remains the truthful status while the bot routes to the workshop and uses the working animation. Keep the truthful Thinking status and runtime state, but map thinking to the same workshop action and working animation as working/running rather than the research-station presentation. Apply to both ranch maps, preserving quiet mode, reduced motion and animation pause. This is presentation only: no changes to task pickup, busy detection, interruption or context. Verify that a thinking bot visibly performs the working action with normal motion enabled and still displays Thinking in its status/details.
 
 ### Planned change: automatic acceptance with opt-in human review (2026-10-10)
 
-Status: planned, not implemented. The board defaults to accepting successful bot task completions automatically; routine tasks do not require an operator review step. Add a per-task Human review checkbox, off by default, visible in task creation/editing and indicated on task cards when enabled.
+Implemented in 0.12.0. The board accepts successful bot task completions automatically by default; routine tasks do not require an operator review step. Add a per-task Human review checkbox, off by default, visible in task creation/editing and indicated on task cards when enabled.
 
 When Human review is off, a verified successful runtime completion moves the task to Done/accepted and satisfies downstream dependencies. When it is on, successful completion moves the task to Review; only human acceptance satisfies dependencies. Preserve completion summaries, handovers and attempt history in both cases. Failed, interrupted, blocked or unresolved attempts must never be auto-accepted. This policy controls completion review only, not tool permissions or runtime approval prompts.
 
 Changing this setting must not silently accept a task already awaiting review; existing Review tasks retain their review requirement unless explicitly accepted. Existing accepted tasks stay accepted. The UI must distinguish automatic acceptance from human acceptance. Verify both completion paths, dependency release, and failure/unresolved protection before shipping.
+
+### Planned Board refinements and Desk feedback (2026-10-10)
+
+Implemented in 0.12.0.
+
+- Task families: user-selected named color groups identify related work. Card colors persist across workflow columns; columns communicate status. Optional family badges associate bots with related work without replacing their individual bot colors. Family membership is independent of dependency edges.
+- Compact cards: cap card height and truncate previews while retaining title, assigned bot, family and key status indicators. Open a details popup for full instructions, results, dependencies and next actions, including review, follow-up and assignment.
+- Follow-ups: automatically release newly created follow-up tasks for pickup; inherit the parent's project and family. Release never bypasses dependency, human-review, model-availability or assignment eligibility rules.
+- Desk Poke / Check for tasks: expose an explicit action on the selected bot's Desk that requests the existing safe work check. Defer while the bot is busy or awaiting input/approval; do not interrupt current work or change pickup/rest preferences. Ordinary ranch taps remain playful. Report whether the check is pending, no eligible task is available, or work was picked up.
+- Done indicator: default to clearing the transient Done bubble after three minutes from verified completion, showing idle/ready presentation if no newer activity has arrived. This must not change the actual task state, accept work awaiting review, hide questions/errors, or overwrite newer work. Preserve completion details in task history and the Desk. Verify timeout behavior and the race where new activity arrives before the timer expires.
+
+
+### 0.12.0 implementation note
+
+New tasks default to automatic acceptance after an authenticated successful runtime completion. Existing tasks in Review migrate to Human review and stay there through older-client partial edits. Explicit human acceptance records provenance and releases dependent work. Follow-ups are separate released child tasks, preserve parent history, and wait for parent acceptance when it is still in Review. Failures and unresolved attempts remain blocked.
+
+Task families use the supported mint, cyan, lavender, rose, amber and lime palette; cards retain family color across Workflow and Bot queues. Details dialogs provide full task data, attempt history, acceptance source and contextual actions. Thinking uses the workshop animation in both maps. Desk exposes Poke / Check for tasks and reports pending, no-work or pickup results. The Done bubble expires after three minutes of verified completion without changing task state.
+
+Archive, Hidden and Delete views and the visual dependency map remain separate pending scope. Physical iCUE touch behavior and live provider access remain separate validation obligations.

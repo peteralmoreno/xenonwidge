@@ -18,7 +18,7 @@ npm run build
 
 Packages are written to `artifacts/releases/`: one `.icuewidget` per project and companion ZIPs for Audio Deck and Bot Ranch. Versions come from widget manifests. `npm run build:ranch` builds the integrated Large Bot Ranch plus the legacy Desk compatibility package and companion (no .NET, Bun, OMP, or login required to build them).
 
-See the [build, install and verification guide](docs/guides/build-and-import.md) for prerequisites, output paths, companion setup, tests, and remaining device checks. Browser tests need `npx playwright install chromium` once. Run `npm test` for unit, browser and Audio Deck companion tests.
+See the [new-PC Bot Ranch install guide](docs/guides/bot-ranch-install.md) for prerequisites, fresh-checkout build steps, companion installation, OMP runtime setup, iCUE pairing, and verification. The [build, install and verification guide](docs/guides/build-and-import.md) covers all projects. Browser tests need `npx playwright install chromium` once. Run `npm test` for unit, browser and Audio Deck companion tests.
 
 Source lives under `sources/`, automation under `tools/`, and [reference/design notes](docs/README.md) under `docs/`. Generated releases, dependencies, test output, local credentials and conversation data are ignored by Git; clean checkouts build every current release from source.
 

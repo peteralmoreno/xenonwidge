@@ -13,6 +13,8 @@ Research checked: **2026-10-08**. These are concise project notes, with links to
 
 - [Setup](guides/setup.md): connect the device and prepare development tools.
 - [Build and import](guides/build-and-import.md): reproduce all current releases from source, test, package, and install.
+- [Bot Ranch build on a new PC](guides/bot-ranch-build.md): install build prerequisites, create the widget and companion packages, and verify their versioned outputs.
+- [Bot Ranch on a new PC](guides/bot-ranch-install.md): prerequisites, source build, companion installation, pairing, and first-run checks.
 - [Testing and troubleshooting](guides/testing-and-troubleshooting.md): checks and diagnosis.
 
 ## Interacting with the widget and iCUE
@@ -39,6 +41,7 @@ Record the exact device model, installed iCUE version, desired information/actio
 
 ## Bot Ranch
 
+- [Install on a new PC](guides/bot-ranch-install.md).
 - [Install and use](../sources/omp-bot/README.md).
 - [Central companion](../sources/omp-bot-companion/README.md).
 - [Build current releases](guides/build-and-import.md).
