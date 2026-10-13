@@ -2,6 +2,22 @@
 
 Four touch widgets for Corsair iCUE / XENEON EDGE, with editable source and reproducible release commands.
 
+## Downloads
+
+[Download the latest botRanch release](https://github.com/peteralmoreno/xenonwidge/releases/latest) · [All releases](https://github.com/peteralmoreno/xenonwidge/releases)
+
+Open **Assets** on the release page:
+
+- **`bot-ranch-companion-<version>.zip`** — Windows desktop panel, Ranch app and local companion. Extract the whole ZIP, run **Install botRanch.cmd**, then open **botRanch** from Start.
+- **`bot-ranch-<version>.icuewidget`** — optional matching widget for iCUE / XENEON EDGE.
+- **`SHA256SUMS.txt`** — checksums for the downloads.
+
+When updating, choose **Quit desktop app** from the existing botRanch tray menu before reopening. The × button only hides the dock. Finish active work before the companion needs to update. The panel shows the running App and Companion versions.
+
+The desktop ZIP includes its UI runtime. Node.js is still required; managed bots also need Git Bash, Bun, OMP and provider access. See the [installation guide](docs/guides/bot-ranch-install.md). Downloads require access to this repository while it is private. GitHub's automatic **Source code** archives are for development, not the ready-to-run app.
+
+## Projects
+
 | Project | Widget source | Companion |
 | --- | --- | --- |
 | Doodle Pad | [Drawing tools, colors, clipboard and PNG export](sources/doodle-pad/README.md) | None |
