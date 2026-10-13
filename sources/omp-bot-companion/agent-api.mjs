@@ -1,0 +1,94 @@
+import { previewChanges, applyChanges } from './board-changes.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const catalog = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'agent-catalog.json'), 'utf8'));
+
+const routeNames = new Set(['/admin/ai/catalog','/admin/ai/snapshot','/admin/ai/preview','/admin/ai/apply','/admin/ai/access','/admin/ai/history','/admin/ai/operate']);
+const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const statusFor = error => error?.code === 'conflict' ? 409 : error?.code === 'permission' ? 403 : 400;
+
+/**
+ * Construct the restricted AI API route handler. Call only after the companion's existing
+ * admin bearer authentication and origin check have succeeded.
+ *
+ * `persistTransaction` must call the manager's atomic authoritative commit hook.
+ * `setAccess` and `operate` are native host integrations, never catalog-exposed routes.
+ */
+export function createAgentApi({ manager, persistTransaction, setAccess, operate, getAccess = () => manager?.aiState?.access || 'inspect', now = Date.now }) {
+  if (!manager) throw new TypeError('A live companion manager is required.');
+  const previews = new Map();
+
+  const rawSnapshot = () => {
+    const view = manager.view();
+    return {
+      taskRevision: manager.taskRevision,
+      tasks: structuredClone(manager.tasks),
+      profiles: (view.profiles || []).map(({ id, nickname, active, slot, autoPickup, preferredModel, readOnly, role }) => ({ id, nickname, active, slot, autoPickup, preferredModel, readOnly, role })),
+      familyPolicies: structuredClone(manager.aiState?.familyPolicies || manager.familyPolicies || {}),
+      access: getAccess(),
+    };
+  };
+  const snapshot = () => {
+    const result = rawSnapshot();
+    return { ...result, tasks: manager.tasks.map(task => manager.publicTask ? manager.publicTask(task) : structuredClone(task)) };
+  };
+  const applyAccess = () => ({ access: getAccess(), allowed: ['inspect','organize','operate'] });
+
+  async function handle({ method, url, body }) {
+    try {
+      if (!routeNames.has(url)) return { status: 404, body: { error: 'Not found.' } };
+      const access = getAccess();
+      if (!['inspect','organize','operate'].includes(access)) return { status: 503, body: { error: 'AI Sync access state is invalid. Restore inspect access in Settings.' } };
+      if (method === 'GET' && url === '/admin/ai/catalog') return { status: 200, body: catalog };
+      if (method === 'GET' && url === '/admin/ai/access') return { status: 200, body: applyAccess() };
+      if (method === 'GET' && url === '/admin/ai/snapshot') return { status: 200, body: snapshot() };
+      if (method === 'GET' && url === '/admin/ai/history') {
+        const state = manager.aiState || {};
+        return { status: 200, body: { audit: structuredClone(state.audit || []), receipts: Object.values(state.receipts || {}) } };
+      }
+      if (method !== 'POST' || !isObject(body)) return { status: 400, body: { error: 'Expected a JSON object.' } };
+      if (url === '/admin/ai/access') {
+        if (typeof body.access !== 'string' || Object.keys(body).length !== 1 || !['inspect','organize','operate'].includes(body.access)) return { status: 400, body: { error: 'Choose inspect, organize, or operate.' } };
+        if (typeof setAccess !== 'function') return { status: 403, body: { error: 'Access mode can only be changed in the native AI Sync window.' } };
+        return { status: 200, body: await setAccess(body.access) };
+      }
+      if (url === '/admin/ai/preview') {
+        if (Object.keys(body).some(key => !['changeSetId','actor','operations','expectedTaskRevision'].includes(key)) || Object.keys(body).length !== 4) return { status: 400, body: { error: 'Preview requires changeSetId, actor, operations, and expectedTaskRevision only.' } };
+        if (manager.aiState?.receipts && Object.hasOwn(manager.aiState.receipts, body.changeSetId)) return { status: 409, body: { error: 'This change-set ID already has a receipt. Use a new ID for a changed proposal.' } };
+        const plan = previewChanges({ snapshot: rawSnapshot(), changeSetId: body.changeSetId, actor: body.actor, operations: body.operations, expectedTaskRevision: body.expectedTaskRevision, now });
+        if (previews.size >= 50) previews.delete(previews.keys().next().value);
+        previews.set(plan.id, plan);
+        const { stagedTasks, stagedFamilyPolicies, stagedTaskRevision, ...safePlan } = plan;
+        return { status: 200, body: safePlan };
+      }
+      if (url === '/admin/ai/apply') {
+        if (access !== 'organize' && access !== 'operate') return { status: 403, body: { error: 'Inspect access can preview changes but cannot apply them.' } };
+        if (Object.keys(body).some(key => !['changeSetId','expectedTaskRevision'].includes(key)) || typeof body.changeSetId !== 'string' || (body.expectedTaskRevision !== undefined && !Number.isSafeInteger(body.expectedTaskRevision))) return { status: 400, body: { error: 'Apply requires a changeSetId and, optionally, expectedTaskRevision.' } };
+        const state = manager.aiState || { access, audit: [], receipts: {} };
+        const prior = state.receipts?.[body.changeSetId];
+        if (prior) return { status: 200, body: structuredClone(prior) };
+        const plan = previews.get(body.changeSetId);
+        if (!plan) return { status: 409, body: { error: 'Preview expired or unknown. Preview this change set again.' } };
+        const expectedTaskRevision = body.expectedTaskRevision ?? plan.expectedTaskRevision;
+        const receipt = await applyChanges({ snapshot: { ...rawSnapshot(), aiState: state }, preview: plan, expectedTaskRevision, aiState: state, persistTransaction, now });
+        previews.delete(body.changeSetId);
+        return { status: 200, body: receipt };
+      }
+      if (url === '/admin/ai/operate') {
+        if (access !== 'operate') return { status: 403, body: { error: 'Operate access is required for this action.' } };
+        if (typeof operate !== 'function' || !['release','start','ring'].includes(body.action)) return { status: 400, body: { error: 'Unsupported operate action.' } };
+        const allowed = body.action === 'release' ? ['action','taskId','expectedRevision'] : body.action === 'start' ? ['action','taskId','profileId','expectedRevision'] : ['action'];
+        if (Object.keys(body).length !== allowed.length || Object.keys(body).some(key => !allowed.includes(key))) return { status: 400, body: { error: 'Operate request contains unsupported fields.' } };
+        if (body.action === 'ring' ? false : typeof body.taskId !== 'string' || !body.taskId || !Number.isSafeInteger(body.expectedRevision)) return { status: 400, body: { error: 'Operate request has invalid task fields.' } };
+        if (body.action === 'start' && (typeof body.profileId !== 'string' || !body.profileId)) return { status: 400, body: { error: 'Start requires a saved profile ID.' } };
+        return { status: 200, body: await operate(body.action, structuredClone(body)) };
+      }
+      return { status: 404, body: { error: 'Not found.' } };
+    } catch (error) {
+      return { status: statusFor(error), body: { error: String(error?.message || 'AI Sync request failed.').replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').slice(0, 700), ...(error?.code === 'conflict' ? { code: 'conflict' } : {}) } };
+    }
+  }
+  return Object.freeze({ handle, catalog, routes: [...routeNames] });
+}

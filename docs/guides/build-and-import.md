@@ -5,7 +5,7 @@ Run commands from the repository root in PowerShell. No personal checkout path i
 ## Prerequisites
 
 - Windows 10/11 with PowerShell 5.1+.
-- Node.js 20+ and npm. `npm ci` installs exact committed dependency versions; no global widget CLI is needed.
+- Node.js 22.12+ and npm for development. `npm ci` installs exact committed dependency versions and downloads the Electron desktop runtime; no global widget CLI is needed. If install scripts were disabled, run `node node_modules/electron/install.js` before building or testing the desktop dock.
 - .NET 9 SDK for Audio Deck and its tests. Builds use the committed NuGet lock file, win-x64, self-contained publishing, and runtime version recorded in the project file. First restore needs network access.
 - iCUE and a compatible XENEON display for import and hardware verification.
 
@@ -18,7 +18,7 @@ npm ci
 npm run build
 ```
 
-The build stages only explicitly listed source files in a unique temporary directory, validates each widget, packages it using the installed iCUE CLI, and creates complete companion ZIPs. Audio Deck source is staged before locked restore/publish so incidental local configuration cannot enter the application. Bot Ranch includes its setup page and current widget UI. Temporary staging is removed after success or failure; generated releases are disposable and can be removed between builds.
+The build stages only explicitly listed source files in a unique temporary directory, validates each widget, packages it using the installed iCUE CLI, and creates complete companion ZIPs. Audio Deck source is staged before locked restore/publish so incidental local configuration cannot enter the application. Bot Ranch includes its setup page, current widget UI and Windows floating dock, with the Electron runtime and bundled React/Motion/Lucide renderer. Temporary staging is removed after success or failure; generated releases are disposable and can be removed between builds.
 
 | Command | Result |
 | --- | --- |

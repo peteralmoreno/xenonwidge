@@ -17,13 +17,15 @@ const widgetFiles = {
   desk: [...common, 'app.js', 'appearance.js', 'widget.css'],
 };
 const ranchFiles = [
-  'README.md', 'bridge.mjs', 'config.mjs', 'extension.mjs', 'focus.mjs', 'manager.mjs', 'runtime-policy.mjs', 'bot-library.mjs', 'queue-policy.mjs', 'work-check.mjs', 'terminal-runner.mjs',
-  'companion-start.mjs', 'install.mjs', 'Install-Shortcut.ps1', 'Install botRanch.cmd', 'Open botRanch.cmd', 'metadata.mjs', 'native.mjs', 'open-setup.mjs', 'preview.mjs', 'server.mjs', 'state.mjs',
+  'README.md', 'bridge.mjs', 'config.mjs', 'extension.mjs', 'focus.mjs', 'manager.mjs', 'pipeline.mjs', 'pipeline-manager.mjs', 'updates.mjs', 'runtime-policy.mjs', 'bot-library.mjs', 'queue-policy.mjs', 'pickup-policy.mjs', 'work-check.mjs', 'terminal-runner.mjs',
+  'agent-api.mjs', 'agent-catalog.json', 'board-changes.mjs', 'ranch-cli.mjs', 'botRanch-cli.cmd', 'companion-health.mjs', 'companion-lock.mjs', 'lifecycle-log.mjs',
+  'companion-start.mjs', 'install.mjs', 'Install-Shortcut.ps1', 'Install botRanch.cmd', 'Open botRanch.cmd', 'metadata.mjs', 'native.mjs', 'open-desktop.mjs', 'open-setup.mjs', 'preview.mjs', 'server.mjs', 'state.mjs',
   'Focus-Terminal.ps1', 'Terminal-Control.ps1', 'Start-Bot-Ranch.ps1',
   'Launch-Companion.cmd', 'Open Bot Ranch Setup.cmd', 'Start-Bot-Ranch.cmd', 'Start-OMP.cmd',
   'launch-companion.sh', 'open-setup.sh', 'ranch-terminal.sh', 'start-bot-ranch.sh', 'start-omp.sh',
   'setup/index.html', 'setup/app.js', 'setup/style.css', 'setup/settings.css', 'setup/board.html', 'setup/board.js', 'setup/board.css',
 ];
+const ranchGuides = ['bot-ranch-loop.md', 'bot-ranch-pipeline.md', 'bot-ranch-desktop.md', 'bot-ranch-install.md', 'bot-ranch-ai-sync.md'];
 function copyFiles(source, destination, files) {
   for (const file of files) {
     const input = path.join(source, file);
@@ -33,12 +35,16 @@ function copyFiles(source, destination, files) {
     fs.copyFileSync(input, output);
   }
 }
-function stageRanch(sources, destination) {
+function stageRanch(sources, destination, {desktop = false, runtime = true} = {}) {
   copyFiles(path.join(sources, 'omp-bot-companion'), destination, ranchFiles);
+  copyFiles(path.join(root, 'docs/guides'), path.join(destination, 'guides'), ranchGuides);
+  const readme = path.join(destination, 'README.md');
+  fs.writeFileSync(readme, fs.readFileSync(readme, 'utf8').replaceAll('../../docs/guides/bot-ranch-', 'guides/bot-ranch-'));
   copyFiles(path.join(sources, 'omp-bot'), path.join(destination, 'ui'), widgetFiles.ranch);
   copyFiles(path.join(sources, 'ranch-desk'), path.join(destination, 'desk'), widgetFiles.desk);
   const version = JSON.parse(fs.readFileSync(path.join(sources, 'omp-bot', 'manifest.json'), 'utf8')).version;
-  fs.writeFileSync(path.join(destination, 'release.json'), JSON.stringify({version, files:[...ranchFiles,...widgetFiles.ranch.map(f=>'ui/'+f),...widgetFiles.desk.map(f=>'desk/'+f)]},null,2));
+  const desktopFiles = desktop ? require('./build-desktop.cjs').stageDesktop(sources, path.join(destination, 'desktop'), {runtime}) : [];
+  fs.writeFileSync(path.join(destination, 'release.json'), JSON.stringify({version, files:[...ranchFiles,...ranchGuides.map(f=>'guides/'+f),...widgetFiles.ranch.map(f=>'ui/'+f),...widgetFiles.desk.map(f=>'desk/'+f),...desktopFiles]},null,2));
 }
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: root, stdio: 'inherit', windowsHide: true });
@@ -77,7 +83,7 @@ function build(target = 'all', mode = 'build') {
       if ((mode === 'build' || mode === 'companion') && ['audio', 'ranch'].includes(key)) {
         const name = `${project.name}-companion-${version}`;
         const companion = path.join(staging, name);
-        if (key === 'ranch') stageRanch(sources, companion);
+        if (key === 'ranch') stageRanch(sources, companion, {desktop:true});
         else {
           const audioSource = path.join(staging, 'audio-source');
           copyFiles(path.join(sources, 'audio-deck-companion'), audioSource, [

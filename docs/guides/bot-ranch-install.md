@@ -1,6 +1,6 @@
 # Bot Ranch install on a new Windows PC
 
-This guide installs the current Bot Ranch widget and central companion from a fresh Windows PC. The current source manifest is **0.12.0**. Use the widget package and companion ZIP with the same version; do not mix packages from different releases.
+This guide installs the current Bot Ranch widget and central companion from a fresh Windows PC. The current source manifest is **0.17.1**. Use the widget package and companion ZIP with the same version; do not mix packages from different releases.
 
 For a prebuilt release, start at [Install the release](#install-the-release). To build the packages from this repository, follow the complete guide.
 
@@ -8,8 +8,8 @@ For a prebuilt release, start at [Install the release](#install-the-release). To
 
 | Component | Required for | Installation location or data |
 | --- | --- | --- |
-| iCUE 5.47+ and a XENEON EDGE | Widget import and hardware use | iCUE manages the imported widget |
-| Node.js 20+ with npm | Building releases and running the companion | Node installation; companion under `%LOCALAPPDATA%\Programs\botRanch` |
+| iCUE 5.47+ and a XENEON EDGE | Mode A only: widget import and hardware use | iCUE manages the imported widget; mode B needs neither |
+| Node.js 22.12+ with npm | Building releases and running the companion | Node installation; companion under `%LOCALAPPDATA%\Programs\botRanch` |
 | Git for Windows with Git Bash | Managed Bot Ranch terminals | Git installation; used by the terminal launcher |
 | Bun 1.3.14+ | Managed Bot Ranch terminals | Bun installation, normally under the user profile |
 | Compatible Oh My Pi (OMP) | Managed Bot Ranch terminals | OMP installation and provider login |
@@ -19,8 +19,8 @@ For a prebuilt release, start at [Install the release](#install-the-release). To
 ## 1. Prepare the new PC
 
 1. Install Windows updates and sign in to the Windows account that will run Bot Ranch.
-2. Install iCUE 5.47 or newer, connect the XENEON EDGE, and complete its normal device setup. A charging-only USB connection does not provide touch.
-3. Install Node.js 20 or newer with npm.
+2. For **A · iCUE widget**, install iCUE 5.47 or newer, connect the XENEON EDGE, and complete its normal device setup. A charging-only USB connection does not provide touch. For **B · Desktop app**, skip this step.
+3. Install Node.js 22.12 or newer with npm.
 4. Install Git for Windows and keep Git Bash in the installation. The companion uses Git Bash to launch managed terminals.
 5. Install Bun 1.3.14 or newer and a compatible Oh My Pi installation using their normal installation instructions. Sign in to the provider used by OMP in the terminal where Bot Ranch will run.
 6. Close and reopen PowerShell and Git Bash after installing tools so their updated PATH values are loaded.
@@ -28,7 +28,7 @@ For a prebuilt release, start at [Install the release](#install-the-release). To
 Verify the tools before continuing:
 
 ```powershell
-node --version       # 20 or newer
+node --version       # 22.12 or newer
 npm --version
 git --version
 bash --version
@@ -53,7 +53,7 @@ npm run build:ranch
 Confirm the matching Bot Ranch outputs exist:
 
 ```powershell
-$version = '0.12.0'
+$version = '0.17.1'
 Test-Path "artifacts\releases\bot-ranch\bot-ranch-$version.icuewidget"
 Test-Path "artifacts\releases\bot-ranch\bot-ranch-companion-$version.zip"
 ```
@@ -62,10 +62,18 @@ Both commands must return `True`. The generated files are disposable; rebuild th
 
 ## 3. Install the central companion
 
-1. Extract the **entire** matching `bot-ranch-companion-0.12.0.zip` to a writable temporary folder. Do not run the installer from inside the ZIP and do not remove files from the extracted package.
+The expanded panel shows **App** (the running desktop) and **Companion** versions. **Versions & recovery** also shows the installed version. If an update is installed while the old app remains open, the panel asks you to quit the desktop app and reopen it. The ? button only hides the dock; opening the shortcut again focuses an existing app.
+
+For an upgrade, first use the existing tray menu's **Quit dock** or **Quit desktop app** so the new executable can open. This leaves bot work running. Finish active work before reopening a release that needs to update the companion; its startup guard will refuse to replace a busy companion.
+
+1. Extract the **entire** matching `bot-ranch-companion-0.17.1.zip` to a writable temporary folder. Do not run the installer from inside the ZIP and do not remove files from the extracted package.
 2. Run `Install botRanch.cmd` once.
 3. Approve the normal Windows script prompt if one appears. The installer copies the release to `%LOCALAPPDATA%\Programs\botRanch` and creates a **botRanch** Start menu shortcut.
-4. Open **botRanch** from the Start menu. The stable launcher starts or reuses the companion and opens the Board.
+4. Open **botRanch** from the Start menu. The stable launcher opens the floating desktop dock and starts or reuses the companion. Click the robot mark to expand the sidebar. Use **Board**, **Bots** or **Factory** there; **Full Board** and **Settings** open separate windows.
+
+Choose **Ranch display → B · Desktop app** in the expanded dock or tray menu to open the full Ranch without iCUE. It pairs automatically with the same companion. Choose **A · iCUE widget** to use your imported hardware widget. The choice is remembered, and switching modes does not interrupt bot work.
+
+The ZIP includes the Windows desktop runtime and bundled UI dependencies. You do not install React or Motion separately. See the [desktop dock guide](bot-ranch-desktop.md) for recovery, AI Sync, tray controls and iCUE navigation. The stable `botRanch-cli.cmd` launcher is installed beside `Open botRanch.cmd`; it follows the current release. Quitting the dock leaves the companion and bots running.
 
 The companion stores settings, task records, terminal records, and history outside the checkout, normally under `%LOCALAPPDATA%\OmpBot`. Do not copy this folder into a release archive or share its keys.
 
@@ -73,7 +81,7 @@ If the shortcut was not created, run the launcher directly from `%LOCALAPPDATA%\
 
 ## 4. Configure the Bot Ranch home and bots
 
-In the Board, open **Settings**:
+In the dock or Board, open **Settings**:
 
 1. In **Home & folders**, choose a writable Bot home/base project outside `node_modules` and generated release folders. A dedicated folder such as `%USERPROFILE%\botRanch-home` is suitable for a new PC.
 2. Save the home. The companion initializes `bots`, `roles`, `tasks`, `sessions`, and `handovers`, and writes a `botRanch.md` guide without deleting existing files.
@@ -86,7 +94,9 @@ The active ranch supports up to six profiles. Additional saved profiles remain i
 
 ## 5. Import and pair the widget in iCUE
 
-1. In iCUE, open the widget section and import `artifacts\releases\bot-ranch\bot-ranch-0.12.0.icuewidget`.
+This section is for **mode A**. Mode B uses the standalone Ranch window and requires no iCUE import or manual key entry.
+
+1. In iCUE, open the widget section and import `artifacts\releases\bot-ranch\bot-ranch-0.17.1.icuewidget`.
 2. Place the widget in a **Large** slot. The integrated Tasks view is designed for the Large layout; the separate Ranch Desk widget is not required.
 3. In iCUE, allow `127.0.0.1:43822` under **Settings > Software Settings > Widget Access**.
 4. Open the imported widget's **Connect** dialog and paste the connection key from the companion's **Settings > Connection** page.
@@ -108,7 +118,7 @@ Do not use a paid provider request merely to test installation. The companion's 
 
 If someone supplied the matching widget and companion packages, a repository checkout is not needed for the target PC:
 
-1. Install Node.js 20+ and iCUE 5.47+ as described above. Git Bash, Bun, and OMP are also required if this PC will run managed terminals.
+1. Install Node.js 22.12+ and iCUE 5.47+ as described above. Git Bash, Bun, and OMP are also required if this PC will run managed terminals.
 2. Import the matching `.icuewidget` into iCUE and choose Large.
 3. Extract the matching companion ZIP and run `Install botRanch.cmd` once.
 4. Open **botRanch** from Start, configure the Bot home and profiles, then pair the widget with the Connection key.
@@ -125,7 +135,7 @@ If someone supplied the matching widget and companion packages, a repository che
 ## Troubleshooting
 
 - **`node` is not recognized:** close and reopen the terminal after installing Node.js; verify `node --version`.
-- **The installer pauses or exits:** run it from the fully extracted package with Node.js 20+ available on PATH. Keep the installer window open until it reports the install path.
+- **The installer pauses or exits:** run it from the fully extracted package with Node.js 22.12+ available on PATH. Keep the installer window open until it reports the install path.
 - **The Board opens but a bot cannot start:** use **Settings > Diagnostics**. Check Bun 1.3.14+, `omp --version`, Git Bash, script policy, writable local storage, the absolute project folder, and provider login.
 - **The widget cannot connect:** confirm the companion is running, iCUE allows `127.0.0.1:43822`, and the widget uses the current Connection key. Never copy a key from a different PC unless that is intentional.
 - **The widget is missing or too small:** re-import the `.icuewidget` and place it in a Large slot. Ranch Desk is a compatibility package, not a prerequisite for integrated Bot Ranch.

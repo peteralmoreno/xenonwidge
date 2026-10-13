@@ -1,15 +1,18 @@
 import http from 'node:http';import {timingSafeEqual,randomUUID} from 'node:crypto';import {STATES} from './state.mjs';
 import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
+import os from 'node:os';
 import {sanitizePreview} from './preview.mjs';
 import {sanitizeMetadata} from './metadata.mjs';
+import {createAgentApi} from './agent-api.mjs';
 const directory=path.dirname(fileURLToPath(import.meta.url));
 const uiRoot=fs.existsSync(path.join(directory,'ui/index.html'))?path.join(directory,'ui'):path.join(directory,'../omp-bot');
 const appVersion=JSON.parse(fs.readFileSync(path.join(uiRoot,'manifest.json'),'utf8')).version;
 const deskRoot=fs.existsSync(path.join(directory,'desk/index.html'))?path.join(directory,'desk'):path.join(directory,'../ranch-desk');
 const deskFiles={'/desk/appearance.js':['appearance.js','text/javascript'],'/desk/':['index.html','text/html'],'/desk/app.js':['app.js','text/javascript'],'/desk/widget.css':['widget.css','text/css'],'/desk/resources/icon.svg':['resources/icon.svg','image/svg+xml']};
 const publicFiles={'/ui/appearance.js':['appearance.js','text/javascript'],'/ui/':['index.html','text/html'],'/ui/app.js':['app.js','text/javascript'],'/ui/sprites.js':['sprites.js','text/javascript'],'/ui/world.js':['world.js','text/javascript'],'/ui/widget.css':['widget.css','text/css'],'/ui/resources/icon.svg':['resources/icon.svg','image/svg+xml']};
-export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,adminKey=null,manager=null}){
+export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,adminKey=null,manager=null,instanceId='unknown'}){
  const selectionInstance=randomUUID();
+ const agentApi=manager?createAgentApi({manager,persistTransaction:transaction=>manager.commitAiTransaction(transaction),setAccess:async access=>manager.setAiAccess(access),operate:async(action,body)=>{if(action==='ring')return manager.ringAll();const task=manager.tasks.find(item=>item.id===body.taskId);if(!task)throw Error('Unknown task.');if(action==='release')return manager.saveTask({...task,expectedRevision:body.expectedRevision,releasedForPickup:true});if(action==='start')return manager.dispatchTask(body.taskId,body.profileId,body.expectedRevision);throw Error('Unsupported operate action.');},now}):null;
  const sessions=new Map(),terminals=new Map(),managedIds=new Set();let focusing=false,lastFocus=-Infinity,selectedId="",selectionRevision=0;
  const valid=s=>s&&s.version===1&&typeof s.id==='string'&&/^[\w:-]{1,160}$/.test(s.id)&&Number.isSafeInteger(s.sequence)&&s.sequence>0&&STATES.includes(s.state)&&typeof s.project==='string'&&s.project.length<=80&&typeof s.label==='string'&&s.label.length<=120&&[s.startedAt,s.finishedAt].every(t=>t===null||Number.isFinite(t)&&t>=0&&t<=now()+60000)&&Number.isInteger(s.activeCount)&&s.activeCount>=0&&s.activeCount<=1000;
  return http.createServer(async(req,res)=>{
@@ -22,6 +25,7 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
    try{
     let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>16384)return reply(413,{error:'Runtime request too large'});body+=chunk;}
     const data=JSON.parse(body),authorization=String(req.headers.authorization||''),token=authorization.startsWith('Bearer ')?authorization.slice(7):'';if(req.url==='/runtime/work'){const result=await manager.pollWork(data?.profileId,data?.launchId,token,data?.idle);return result?reply(200,result):reply(401,{error:'Runtime work check rejected.'});}if(!data||typeof data.profileId!=='string'||typeof data.launchId!=='string'||typeof data.attemptId!=='string')return reply(400,{error:'Invalid runtime request.'});
+    if(req.url==='/runtime/status'){const result=manager.postTaskUpdate(data.profileId,data.launchId,data.attemptId,token,data.event);return result?reply(200,result):reply(401,{error:'Status update rejected.'});}
     if(req.url==='/runtime/claim'){
      const task=manager.claimTaskRuntime(data.profileId,data.launchId,data.attemptId,token);return task?reply(200,{task}):reply(409,{error:'This task dispatch is unavailable or already claimed.'});
     }
@@ -38,6 +42,11 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
    if(!adminKey||!manager||a.length!==b.length||!timingSafeEqual(a,b))return reply(401,{error:'Open setup using the Bot Ranch launcher.'});
    if(req.headers.origin&&req.headers.origin!=='http://'+req.headers.host)return reply(403,{error:'Setup must be opened on this companion.'});
    try{
+    if(req.url.startsWith('/admin/ai/')){if(!agentApi)return reply(404,{error:'AI Sync is unavailable.'});let data;if(req.method==='POST'){let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>131072)return reply(413,{error:'AI Sync request too large'});body+=chunk;}try{data=JSON.parse(body);}catch{return reply(400,{error:'Invalid JSON request.'});}}const result=await agentApi.handle({method:req.method,url:req.url,body:data});const response={...result.body};if(result.status===200&&['/admin/ai/catalog','/admin/ai/snapshot'].includes(req.url)){const programRoot=path.join(process.env.LOCALAPPDATA||path.join(os.homedir(),'AppData','Local'),'Programs','botRanch');const cliInvocation=path.join(programRoot,'botRanch-cli.cmd');response.cliInvocation=fs.existsSync(cliInvocation)?cliInvocation:null;response.homeFolder=manager.library.root;}return reply(result.status,response);}
+    if(req.method==='GET'&&req.url==='/admin/health'){
+     const profiles=manager.view().profiles||[],busy=!!(manager.reconciling||manager.locks.size||manager.taskLocks.size||profiles.some(p=>p.activityBusy)||manager.tasks.some(t=>t.attempts?.some(a=>['dispatching','awaiting-runtime','claimed','running','unresolved'].includes(a.state))));
+     return reply(200,{connectionVersion:1,appVersion,pid:process.pid,instanceId,homeFolder:manager.library?.root||'',busy});
+    }
     if(req.method==='GET'&&req.url==='/admin/state')return reply(200,{...manager.view(),appVersion,restartSupported:true});
     if(req.method==='POST'&&req.url==='/admin/shutdown'){if(manager.reconciling||manager.locks.size||manager.taskLocks.size||manager.view().profiles.some(p=>p.activityBusy)||manager.tasks.some(t=>t.attempts?.some(a=>['dispatching','awaiting-runtime','claimed','running','unresolved'].includes(a.state))))return reply(409,{error:'Finish active work before updating the companion. Your terminals were left running.'});manager.shuttingDown=true;manager.persist();reply(200,{ok:true});const server=req.socket.server;setImmediate(()=>{server.emit('companion-shutdown');server.close();server.closeIdleConnections?.();});return;}
     if(req.method==='GET'&&req.url==='/admin/checks')return reply(200,{checks:await manager.checks()});
@@ -46,11 +55,13 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
     if(req.method==='POST'&&req.url==='/admin/control-key/revoke'){manager.revokeControlKey();return reply(200,{ok:true});}
     if(req.method!=='POST')return reply(404,{error:'Not found'});
     let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>32768)return reply(413,{error:'Request too large'});body+=chunk;}
-    const data=JSON.parse(body);if(req.url==='/admin/profile/check-work')return reply(200,manager.requestWorkCheck(data.id));if(req.url==='/admin/profile/delete')return reply(200,await manager.deleteProfile(data.id,data.expectedRevision));if(req.url==='/admin/profile/clean')return reply(200,await manager.cleanProfile(data.id));if(req.url==='/admin/library/import')return reply(200,manager.importProfiles());if(req.url==='/admin/role')return reply(200,manager.saveRole(data));if(req.url==='/admin/pickup')return reply(200,manager.setPickupPaused(data.paused));if(req.url==='/admin/task/start')return reply(200,await manager.dispatchTask(data.taskId,data.profileId,data.expectedRevision));if(req.url==='/admin/profile')return reply(200,manager.saveProfile(data));
+    const data=JSON.parse(body);if(req.url==='/admin/profile/ring-all')return reply(200,manager.ringAll());if(req.url==='/admin/profile/check-work')return reply(200,manager.requestWorkCheck(data.id));if(req.url==='/admin/profile/delete')return reply(200,await manager.deleteProfile(data.id,data.expectedRevision));if(req.url==='/admin/profile/clean')return reply(200,await manager.cleanProfile(data.id));if(req.url==='/admin/library/import')return reply(200,manager.importProfiles());if(req.url==='/admin/role')return reply(200,manager.saveRole(data));if(req.url==='/admin/pickup')return reply(200,manager.setPickupPaused(data.paused));if(req.url==='/admin/task/start')return reply(200,await manager.dispatchTask(data.taskId,data.profileId,data.expectedRevision));if(req.url==='/admin/profile')return reply(200,manager.saveProfile(data));
     if(req.url==='/admin/settings'){if(data.homeFolder!==undefined)manager.setHome(data.homeFolder);if(data.sleepSeconds!==undefined)manager.setSleep(data.sleepSeconds);return reply(200,{ok:true});}
     if(req.url==='/admin/action')return reply(200,await manager.action(data.id,data.action,data.confirmed===true));
     if(req.url==='/admin/task/queue')return reply(200,manager.queueTask(data));if(req.url==='/admin/task/stop')return reply(200,await manager.stopTask(data.id,data.confirmed,data.expectedAttemptId));if(req.url==='/admin/task')return reply(200,manager.saveTask(data));
+    if(req.url==='/admin/task/sticky')return reply(200,manager.setTaskSticky(data));if(req.url==='/admin/family/sticky')return reply(200,manager.setFamilySticky(data));
     if(req.url==='/admin/task/archive')return reply(200,manager.archiveTask(data.id,data.expectedRevision));
+    if(req.url==='/admin/task/pipeline')return reply(200,await manager.pipelineAction(data));
     if(req.url==='/admin/task/retry')return reply(200,await manager.prepareTaskRetry(data.id,data.expectedRevision));
     if(req.url==='/admin/task/review')return reply(200,manager.reviewTask(data.id,data.expectedRevision,data.action,data.note));
     if(req.url==='/admin/membership')return reply(200,manager.setMembership(data.id,data.active,data.expectedRevision));
@@ -70,6 +81,7 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
     const data=JSON.parse(body);
     if(req.url==='/control/task/queue')return reply(200,manager.queueTask(data));if(req.url==='/control/task/stop')return reply(200,await manager.stopTask(data.id,data.confirmed,data.expectedAttemptId));if(req.url==='/control/task')return reply(200,manager.saveTask(data));
     if(req.url==='/control/task/archive')return reply(200,manager.archiveTask(data.id,data.expectedRevision));
+    if(req.url==='/control/task/pipeline')return reply(200,await manager.pipelineAction(data));
     if(req.url==='/control/task/retry')return reply(200,await manager.prepareTaskRetry(data.id,data.expectedRevision));
     if(req.url==='/control/task/review')return reply(200,manager.reviewTask(data.id,data.expectedRevision,data.action,data.note));
     if(req.url==='/control/membership')return reply(200,manager.setMembership(data.id,data.active,data.expectedRevision));

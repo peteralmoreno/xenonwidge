@@ -26,3 +26,5 @@ playwright-report/
 .vs/
 .DS_Store
 Thumbs.db
+
+**/ranch-updates.json

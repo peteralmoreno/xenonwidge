@@ -1,0 +1,12 @@
+﻿'use strict';
+class RecoveryController{
+ constructor({health,shutdown,start,quit=()=>{},setIntervalImpl=setInterval,clearIntervalImpl=clearInterval,intervalMs=5000}){this.health=health;this.shutdown=shutdown;this.start=start;this.quit=quit;this.setIntervalImpl=setIntervalImpl;this.clearIntervalImpl=clearIntervalImpl;this.intervalMs=intervalMs;this.pending=null;this.timer=null;this.running=false;this.revision=0;}
+ status(){return {pending:!!this.pending,action:this.pending,revision:this.revision};}
+ async request(action){if(!['reconnect','restart-when-idle','quit-when-idle'].includes(action))return {ok:false,error:'Unsupported recovery action.'};if(this.running)return {ok:true,...this.status()};if(action==='reconnect'){this.running=true;try{const health=await this.health();if(health.status==='offline'){await this.start();return {ok:true,started:true,...this.status()};}if(health.status==='connected')return {ok:true,reused:true,...this.status()};return {ok:false,error:health.message||'Companion identity could not be verified.',...this.status()};}catch(error){return {ok:false,error:typeof error?.message==='string'?error.message.slice(0,500):'The companion could not reconnect.',...this.status()};}finally{this.running=false;}}
+  if(this.pending)return {ok:true,...this.status()};this.pending=action;this.revision++;this.timer=this.setIntervalImpl(()=>this.tick(),this.intervalMs);this.timer?.unref?.();return {ok:true,...this.status()};
+ }
+ async cancel(){this.revision++;if(this.timer)this.clearIntervalImpl(this.timer);this.timer=null;this.pending=null;return {ok:true,...this.status()};}
+ async tick(){if(!this.pending||this.running)return;const revision=this.revision,action=this.pending;this.running=true;try{const health=await this.health();if(revision!==this.revision||action!==this.pending)return;if(health.status==='offline'){if(action==='quit-when-idle'){await this.cancel();this.quit();}else{await this.cancel();await this.start();}return;}if(!['connected','version-mismatch'].includes(health.status)||health.busy)return;const result=await this.shutdown();if(revision!==this.revision||action!==this.pending)return;if(!result?.ok){if(result?.status===409)return;await this.cancel();return;}await this.cancel();if(action==='quit-when-idle')this.quit();else await this.start();}catch{/* A transient failure leaves the visible request pending for the next bounded poll. */}finally{this.running=false;}}
+}
+module.exports={RecoveryController};
+

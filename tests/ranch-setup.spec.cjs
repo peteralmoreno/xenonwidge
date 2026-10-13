@@ -117,7 +117,8 @@ test('Large Ranch keeps tasks in the Desk and delegates authoring, role models, 
   await page.getByRole('button',{name:'Bot Bank',exact:true}).click();
    await page.getByRole('button',{name:'Edit defaults'}).click();
    await expect(page.locator('#profile-model')).toHaveCount(0);
-   await expect(page.locator('#profile-role option')).toHaveCount(5);
+   await expect(page.locator('#profile-role option')).toHaveCount(6);
+   await expect(page.locator('#profile-role option[value=pipeline]')).toHaveText('Pipeline');
    const instructionsFile=path.join(dir,'custom.md');fs.writeFileSync(instructionsFile,'Use the ranch conventions.');
    await page.getByLabel('Context').selectOption('per-session');
    await page.getByLabel('Optional instructions file').fill(instructionsFile);

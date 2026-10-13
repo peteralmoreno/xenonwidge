@@ -45,5 +45,18 @@
  }
 
  function mapLayout(map='meadow'){const active=resolveMap(map);return Object.fromEntries(Object.entries(active.stations).map(([name,point])=>[name,{left:point.x+'%',top:point.y+'%'}]));}
- const api={mode,present,step,homes,stations,docks,traits,paceMultiplier,maps,validateMap,mapLayout};if(typeof module!=='undefined')module.exports=api;else root.RanchWorld=api;
+ function createShakeDetector(){
+  let gesture=null;const cooldown=new Map();
+  return {start(id,x,at){gesture={id,extreme:x,direction:0,turns:[],started:at,fired:false};},end(){gesture=null;},move(x,at){
+   const g=gesture;if(!g||g.fired||!Number.isFinite(x)||!Number.isFinite(at))return false;
+   const delta=x-g.extreme,direction=Math.sign(delta);
+   if(!g.direction){if(Math.abs(delta)>=24){g.direction=direction;g.extreme=x;g.turns.push(at);}return false;}
+   if(direction===g.direction){g.extreme=x;return false;}
+   if(Math.abs(delta)<24)return false;
+   g.direction=direction;g.extreme=x;g.turns=g.turns.filter(t=>at-t<=900);g.turns.push(at);
+   if(g.turns.length<4||at-(cooldown.get(g.id)??-Infinity)<10000)return false;
+   g.fired=true;cooldown.set(g.id,at);return true;
+  }};
+ }
+ const api={mode,present,step,homes,stations,docks,traits,paceMultiplier,maps,validateMap,mapLayout,createShakeDetector};if(typeof module!=='undefined')module.exports=api;else root.RanchWorld=api;
 })(globalThis);

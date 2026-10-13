@@ -1,0 +1,36 @@
+{
+  "catalogVersion": 1,
+  "product": "botRanch AI Sync",
+  "apiVersion": 1,
+  "defaultAccess": "inspect",
+  "cliInvocation": "%LOCALAPPDATA%\\Programs\\botRanch\\botRanch-cli.cmd",
+  "actorLabel": "The preview actor is caller-supplied for display and audit context; it is not an authenticated identity.",
+  "description": "Local, application-level access to the authoritative companion Board. Requests require the companion's private admin credential; copied instructions and catalog data never contain credentials.",
+  "accessModes": {
+    "inspect": ["Read the Board snapshot, catalog, access mode, and history.", "Preview a proposed change set."],
+    "organize": ["Everything in inspect.", "Apply validated task drafts and pending task metadata, assignments, queue order, dependencies, families, and sticky settings. Created drafts stay held."],
+    "operate": ["Everything in organize.", "Explicitly release or start a task, or request a work check." ]
+  },
+  "routes": {
+    "catalog": { "method": "GET", "path": "/admin/ai/catalog", "access": "inspect" },
+    "snapshot": { "method": "GET", "path": "/admin/ai/snapshot", "access": "inspect" },
+    "preview": { "method": "POST", "path": "/admin/ai/preview", "access": "inspect", "body": { "changeSetId": "stable-retry-id", "actor": "caller-supplied label", "expectedTaskRevision": 12, "operations": "closed-schema operations listed below" } },
+    "apply": { "method": "POST", "path": "/admin/ai/apply", "access": "organize", "body": { "changeSetId": "stable-retry-id", "expectedTaskRevision": 12 } },
+    "access": { "method": "GET", "path": "/admin/ai/access", "access": "inspect" },
+    "history": { "method": "GET", "path": "/admin/ai/history", "access": "inspect" },
+    "operate": { "method": "POST", "path": "/admin/ai/operate", "access": "operate", "actions": ["release", "start", "ring"] }
+  },
+  "operations": [
+    { "type": "task.create", "required": ["type", "title", "projectFolder", "instructions"], "optional": ["acceptanceCriteria", "reasoningRequest", "modelEligibility", "humanReview", "family", "dependsOn", "assignedProfileId", "stickyMode"], "effect": "Creates a pending todo draft with releasedForPickup=false and no runtime attempt." },
+    { "type": "task.update", "required": ["type", "id", "expectedRevision", "changes"], "changes": ["title", "instructions", "acceptanceCriteria", "reasoningRequest", "modelEligibility", "humanReview", "family", "dependsOn", "stickyMode"], "effect": "Edits pending task metadata only. Status, release, attempt, result, and archive fields are forbidden." },
+    { "type": "task.assign", "required": ["type", "id", "expectedRevision", "profileId"], "effect": "Assigns a pending task to a saved profile or the shared queue (null)." },
+    { "type": "task.order", "required": ["type", "id", "expectedRevision", "beforeTaskId"], "effect": "Moves a pending task before another pending task in the same assignment lane; null means the end." },
+    { "type": "family.setting", "required": ["type", "key", "sticky"], "keyFormat": "JSON string [normalized family name, canonical project path]", "effect": "Changes one normalized family preference for one project." }
+  ],
+  "operateActions": {
+    "release": { "required": ["action", "taskId", "expectedRevision"], "effect": "Explicitly releases an existing held task for pickup." },
+    "start": { "required": ["action", "taskId", "profileId", "expectedRevision"], "effect": "Starts a pending task through existing manager validation and native runtime checks." },
+    "ring": { "required": ["action"], "effect": "Requests the manager's existing idle work checks." }
+  },
+  "sweepPrompt": "Clarify task titles, flag missing acceptance criteria, suggest families and dependencies, preserve each task's meaning, and keep all newly created drafts held. Return a proposed change set for preview; never start or release work unless explicitly asked."
+}

@@ -1,4 +1,4 @@
-# Bot Ranch 0.12.0
+# Bot Ranch 0.17.1
 
 Bot Ranch is a Large overhead ranch widget with an integrated Tasks view and bot details. It connects to one local companion that keeps resident profiles, project tasks, preferences, and existing terminal-session records. The widget's management workflow is designed for the Large layout; physical display fit still needs device validation.
 
@@ -6,7 +6,7 @@ Bot Ranch is a Large overhead ranch widget with an integrated Tasks view and bot
 
 1. For a new Windows PC, follow the [Bot Ranch install guide](../../docs/guides/bot-ranch-install.md), which covers prerequisites, building or installing the matching release, the companion, OMP, Bot home, and iCUE pairing.
 2. Build with `npm ci`, then `npm run build:ranch` from the repository root when building from source.
-3. Extract the companion ZIP and run `Install botRanch.cmd` once. Thereafter open **botRanch** from the Start menu.
+3. Extract the companion ZIP and run `Install botRanch.cmd` once. Thereafter open **botRanch** from the Start menu for the floating desktop dock. Its sidebar includes Board, Bots and Factory; **Full Board** and **Settings** open separate companion windows. See the [desktop guide](../../docs/guides/bot-ranch-desktop.md), including iCUE page-navigation shortcuts.
 4. Add bot profiles with project folders, colors, role, model preference, context policy, pickup setting, and read-only request. The active ranch shows up to six profiles; saved Bot Bank profiles retain their identity and settings.
 5. Import Bot Ranch into iCUE, choose Large, and pair it with the single Connection key from Setup. In iCUE, allow `127.0.0.1:43822` under Settings > Software Settings > Widget Access.
 6. Open Settings > Connection. Paste the single connection key into the widget's Connect dialog for activity and management controls.
@@ -15,7 +15,7 @@ Bot Ranch is a Large overhead ranch widget with an integrated Tasks view and bot
 
 - Ranch shows terminal activity, attention, selected-bot details, observed model/context metadata when available, and the latest supported visible excerpt. Selecting a bot does not focus its terminal; double-tap or use the explicit terminal action.
 - Tasks stores project-targeted local work with instructions, acceptance criteria, assignment, model-family preferences, requested reasoning effort, and automatic-pickup release. Assignment does not start work. Release starts only when global pickup is enabled and an active eligible bot is available.
-- Start creates a durable attempt and launches through the OMP extension. The task stays To do until OMP acknowledges agent start; success enters Review, while failures and lost terminals remain Blocked. Explicit acceptance is required for Done. Runtime model and effort are checked before the task prompt, and read-only mode enforces workspace-scoped filesystem reads only.
+- Start creates a durable attempt and launches through the OMP extension. The task stays To do until OMP acknowledges agent start; success goes to Done unless Human review is enabled, while failures and lost terminals remain Blocked. Runtime model and effort are checked before the task prompt, and read-only mode enforces workspace-scoped filesystem reads only.
 - Available and Rest update the bot's pickup preference for future work; they do not stop current terminal activity. Cleanup is a manual OMP action: run `/ranch-clean` inside the selected bot terminal to open a fresh session. Neither action deletes conversation history or project files.
 - Task archive preserves the task record. Saves use revisions; conflicting edits show an error and require reload. The companion persists accepted state in `%LOCALAPPDATA%\OmpBot\ranch.json`.
 - Bot Bank profiles can be admitted or retired from the widget. Retirement during active or unresolved terminal activity waits for a safe `ready` or `done` observation and keeps the profile and history.

@@ -12,7 +12,11 @@ test('six residents keep colors, expose overflow, and open a terminal only by ex
  await expect(page.locator('#manage')).toContainText('+1');
  sessions.reverse();await page.waitForTimeout(850);
  expect(await page.locator('.bot').evaluateAll(bs=>bs.map(b=>[b.dataset.id,b.dataset.color]))).toEqual(ids);
- await page.locator('.bot[data-id="bot1"]').dblclick();await page.waitForTimeout(500);expect(focused).toEqual([]);await page.getByRole('button',{name:'Open selected terminal'}).click();await expect.poll(()=>focused).toEqual(['bot1']);
+ // Selection semantics should not depend on catching a roaming, overlapping target.
+ await page.getByRole('button',{name:'Pause animation'}).click();
+ const selectedBot=page.locator('.bot[data-id="bot1"]');await expect(selectedBot).toHaveAttribute('data-walking','false');
+ await selectedBot.dblclick();await expect(selectedBot).toHaveAttribute('aria-pressed','true');await page.waitForTimeout(500);expect(focused).toEqual([]);await page.getByRole('button',{name:'Open selected terminal'}).click();await expect.poll(()=>focused).toEqual(['bot1']);
+ await page.getByRole('button',{name:'Play animation'}).click();
  await page.reload();await expect(page.locator('.bot')).toHaveCount(6);
  expect(await page.locator('.bot').evaluateAll(bs=>bs.map(b=>[b.dataset.id,b.dataset.color]))).toEqual(ids);
  await page.locator('#manage').click();await expect(page.locator('#management')).toContainText('Bot profiles are saved in the central companion');await page.getByRole('button',{name:'Done',exact:true}).click();

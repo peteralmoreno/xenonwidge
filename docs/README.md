@@ -44,4 +44,9 @@ Record the exact device model, installed iCUE version, desired information/actio
 - [Install on a new PC](guides/bot-ranch-install.md).
 - [Install and use](../sources/omp-bot/README.md).
 - [Central companion](../sources/omp-bot-companion/README.md).
+- [Floating desktop dock and iCUE page navigation](guides/bot-ranch-desktop.md).
 - [Build current releases](guides/build-and-import.md).
+
+- [Bot Ranch /loop and Pipeline monitoring](guides/bot-ranch-loop.md): mode choice, native OMP examples, token costs and planned integration.
+
+- [Pipeline API jobs and public updates](guides/bot-ranch-pipeline.md): generic API contract, sleep/resume, designs and the shared feed.
