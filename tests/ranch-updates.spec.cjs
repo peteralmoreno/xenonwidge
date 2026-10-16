@@ -1,9 +1,9 @@
 const {test,expect}=require('@playwright/test');
 const fs=require('node:fs'),path=require('node:path');
-async function setup(page){
+async function setup(page,initialUpdates=[]){
  const profile={id:'p1',nickname:'Piper',active:true,color:1,design:'pipeline',role:'generalist',status:'connected',workCheckSupported:true,revision:1};
  const session={id:'bot1',profileId:'p1',managed:true,color:1,project:'Piper',state:'reading',label:'Reading',lastSeen:Date.now(),metadata:{folder:'D:/work'}};
- const data={profiles:[profile],tasks:[],roles:[{id:'generalist',name:'Generalist'}],updates:[],pickupPaused:true};const calls=[];
+ const data={profiles:[profile],tasks:[],roles:[{id:'generalist',name:'Generalist'}],updates:initialUpdates,pickupPaused:true};const calls=[];
  await page.setViewportSize({width:1688,height:900});
  await page.addInitScript(()=>localStorage.setItem('omp-bot.key','a'.repeat(64)));
  await page.route('http://127.0.0.1:43822/**',route=>{
@@ -54,4 +54,25 @@ test('failed Pipeline can prepare a held new attempt without starting a new exte
  const h=await setup(page);h.data.tasks=[{id:'failed-api',title:'Failed export',revision:8,status:'blocked',assignedProfileId:'p1',pipelineRun:{jobId:'failed-job',status:'failed'},attempts:[{id:'failed-attempt',state:'failed'}]},{id:'unknown-api',title:'Unresolved export',revision:9,status:'blocked',assignedProfileId:'p1',pipelineRun:{status:'unresolved'},attempts:[{id:'unknown-attempt',state:'unresolved'}]}];
  await page.locator('#tasks-tab').click();const failed=page.locator('.task-card').filter({hasText:'Failed export'}),unknown=page.locator('.task-card').filter({hasText:'Unresolved export'});await expect(failed.getByRole('button',{name:'Prepare new attempt',exact:true})).toBeVisible();await expect(unknown.getByRole('button',{name:/retry|Prepare new attempt/i})).toHaveCount(0);
  let confirmation='';page.once('dialog',async dialog=>{confirmation=dialog.message();await dialog.accept();});await failed.getByRole('button',{name:'Prepare new attempt',exact:true}).click();await expect.poll(()=>h.calls.find(c=>c.path==='/control/task/retry')?.body).toEqual({id:'failed-api',expectedRevision:8});expect(confirmation).toBe('This job failed. Prepare a new attempt? Starting it later submits a new external job.');expect(h.calls.some(c=>c.path==='/control/task/start')).toBe(false);
+});
+
+test('fresh bot posts speak briefly without replaying history or sending controls',async({page})=>{
+ const h=await setup(page,[{id:'history',profileId:'p1',text:'Already in the feed',at:Date.now(),kind:'progress'}]);
+ await expect(page.locator('#desk-update-text')).toHaveText('Already in the feed');
+ await expect(page.locator('.bot-speech')).toHaveCount(0);
+ h.data.updates.push({id:'fresh',profileId:'p1',text:'<img src=x> Checking the import now.',at:Date.now(),kind:'progress'});
+ const bubble=page.locator('.bot-speech');await expect(bubble).toHaveText('<img src=x> Checking the import now.');await expect(bubble.locator('img')).toHaveCount(0);
+ expect(await bubble.evaluate(el=>getComputedStyle(el).pointerEvents)).toBe('none');
+ const before=await page.locator('.bot').getAttribute('data-state');await page.locator('#all-updates').click();await expect(bubble).toBeVisible();expect(await page.locator('.bot').getAttribute('data-state')).toBe(before);
+ await page.screenshot({path:'artifacts/omp-bot/bot-speech-feed.png'});
+ await expect(bubble).toHaveCount(0,{timeout:11000});await page.waitForTimeout(2800);await expect(bubble).toHaveCount(0);expect(h.calls).toEqual([]);
+});
+
+test('speech stays inside the ranch edges and replaces an older tweet',async({page})=>{
+ const h=await setup(page);await page.emulateMedia({reducedMotion:'reduce'});
+ h.data.updates.push({id:'edge1',profileId:'p1',text:'A short report.',at:Date.now(),kind:'progress'});await expect(page.locator('.bot-speech')).toHaveText('A short report.');await page.locator('#all-updates').click();await page.screenshot({path:'artifacts/omp-bot/ranch-speech-preview.png'});
+ h.data.updates.push({id:'edge2',profileId:'p1',text:'Latest report: '+ 'checking an unusually long project path '.repeat(12),at:Date.now()+1,kind:'progress'});
+ await expect(page.locator('.bot-speech')).toContainText('Latest report:');await expect(page.locator('.bot-speech')).toHaveCount(1);
+ for(const [width,height]of [[1688,696],[2547,676],[600,600]]){await page.setViewportSize({width,height});await expect.poll(async()=>page.locator('.bot-speech').evaluate(el=>{const r=el.getBoundingClientRect(),s=document.getElementById('scene').getBoundingClientRect();return r.left>=s.left&&r.right<=s.right&&r.top>=s.top&&r.bottom<=s.bottom;})).toBe(true);}
+ h.session.state='offline';await expect(page.locator('.bot-speech')).toHaveCount(0);expect(h.calls).toEqual([]);
 });

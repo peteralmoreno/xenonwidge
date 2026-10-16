@@ -1,4 +1,4 @@
-# Bot Ranch Central Companion 0.19.0
+# Bot Ranch Central Companion 0.19.1
 
 Run `Install botRanch.cmd` once. It installs under `%LOCALAPPDATA%\Programs\botRanch` and creates the **botRanch** Start menu shortcut. That shortcut opens the floating desktop dock and starts or reuses the companion. Use **Board** inside the sidebar. **Full Board**, **Settings**, **Connection & recovery**, and **AI Sync** open separate native windows. The installer keeps stable desktop and `botRanch-cli.cmd` launchers, both following the current release. Your selected bot home and existing settings remain separate. Active work blocks replacement.
 

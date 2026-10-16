@@ -1,4 +1,4 @@
-# Bot Ranch 0.19.0
+# Bot Ranch 0.19.1
 
 Bot Ranch is a Large overhead ranch widget with an integrated Tasks view and bot details. It connects to one local companion that keeps resident profiles, project tasks, preferences, and existing terminal-session records. The widget's management workflow is designed for the Large layout; physical display fit still needs device validation.
 
@@ -61,3 +61,5 @@ The companion Board has Workflow and Bot queues views. Inbox holds unreleased dr
 Finish then rest disables future pickup without stopping current work. Stop current task requires confirmation and verified terminal closure; interrupted tasks need review/retry. Current attempts retain their launch settings. Completion enters Review, with the bot's reported handover preserved at home; acceptance moves it to Done.
 
 Idle work checks: **Check for work** on the Desk or Board > Bot queues requests one check, even while automatic pickup is paused. It never releases held tasks. Busy agents, pending questions/approvals, queued messages and asynchronous jobs defer checking. Enabled automatic pickup uses the same idle check. The terminal window stays open: the launcher hands off to a fresh OMP process, resuming saved task context only when policy permits. Older terminals need one restart with this release; direct Start on an already-open terminal still requires closure, so use Check for work instead. Lost acknowledgments remain unresolved rather than retrying. Live provider execution and physical iCUE touch are not certified by browser/mock tests.
+
+The Ranch feed uses compact posts with bot names and timestamps. Fresh bot progress updates also appear in short speech bubbles for eight seconds; newer posts replace the same bot's bubble. Bubbles follow the bot, stay inside the Ranch, and leave touch/drag gestures available. Saved history stays in the feed without replaying when the widget opens.
