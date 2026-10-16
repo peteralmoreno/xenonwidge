@@ -1,4 +1,4 @@
-# Bot Ranch 0.20.1
+# Bot Ranch 0.20.2
 
 Bot Ranch is an observational ranch with playful bot movement, status, tweets and an integrated viewing desk. The desktop sidebar owns Board, Bots and Factory management. Both use one local companion and support six residents.
 

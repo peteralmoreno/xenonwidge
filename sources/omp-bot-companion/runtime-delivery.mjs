@@ -35,7 +35,7 @@ export const runtimeDeliveryMethods={
  },
  noteRuntimeDelivery(profileId,phase){const run=this.runs[profileId],d=run?.delivery;if(!d)return;d.phase=phase;d[phase==='claimed'?'claimedAt':'startedAt']=this.now();delete d.handoff;const attempt=attemptFor(this,run);if(attempt)attempt.delivery=safeDelivery(d);},
  interruptRuntimeDelivery(run,reason){const d=run?.delivery;if(!d)return;d.phase='unresolved';d.reason=reason;delete d.handoff;const attempt=attemptFor(this,run);if(attempt)attempt.delivery=safeDelivery(d);},
- reportingDiagnostics(profileId){const run=this.runs[profileId];return {supported:!!run?.runtimeKeyHash||!!attemptFor(this,run)?.dispatchTokenHash,...(run?.reporting||{})};},
+ reportingDiagnostics(profileId){const run=this.runs[profileId];return {automatic:true,lastActivityAt:run?.activityFeed?.lastPostAt||null,supported:!!run?.runtimeKeyHash||!!attemptFor(this,run)?.dispatchTokenHash,...(run?.reporting||{})};},
  noteStatusResult(run,result,sequence){const previous=run.reporting||{};run.reporting={...previous,lastAttemptAt:this.now(),lastResult:result.accepted?'accepted':result.reason||'rejected',...(result.accepted?{lastAcceptedAt:result.item?.at??this.now()}:{}),sequence};},
  postSessionUpdate(profileId,launchId,token,event){
   const run=this.authenticateSessionRuntime(profileId,launchId,token);if(!run||!this.profiles.some(p=>p.id===profileId))return null;

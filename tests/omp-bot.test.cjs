@@ -15,6 +15,7 @@ test('OMP overlapping tools and approvals preserve the remaining work',async()=>
 });
 test('OMP continuation and failures cannot masquerade as done',async()=>{
  const {BotState}=await stateModule();const s=new BotState();s.event({type:'agent_start'},100);
+ s.event({type:'agent_end',isTerminal:false,messages:[]},150);assert.equal(s.view().state,'working');
  s.event({type:'agent_end',willContinue:true,messages:[]},200);assert.equal(s.view().state,'working');
  s.event({type:'agent_end',messages:[{role:'assistant',stopReason:'error'}]},300);assert.equal(s.view().state,'error');
  s.event({type:'agent_start'},400);s.event({type:'agent_end',messages:[{role:'assistant',stopReason:'aborted'}]},500);assert.equal(s.view().state,'ready');

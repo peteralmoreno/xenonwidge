@@ -65,3 +65,9 @@ test('Ranch exposes observation with sidebar navigation and truthful universal w
  expect(h.calls.filter(c=>c.path==='/control/profiles/wake')[0].body).toEqual({});
  expect(h.calls.some(c=>/task\/pipeline|profile\/check-work|task\/start|control\/profile$/.test(c.path))).toBe(false);
 });
+
+test('automatic activity is labelled and appears in the feed and speech bubble',async({page})=>{
+ const h=await setup(page);h.data.updates=[{id:'observed',profileId:'p1',text:'Reading files.',kind:'activity',source:'activity',at:Date.now()}];
+ await expect(page.locator('#desk-update-text')).toHaveText('Reading files.');await expect(page.locator('#desk-update-meta')).toContainText('Activity');
+ await expect(page.locator('.bot-speech')).toContainText('Reading files.');await page.locator('#all-updates').click();await expect(page.locator('.feed-card')).toContainText('Activity');
+});

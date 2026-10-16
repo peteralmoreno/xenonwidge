@@ -52,3 +52,9 @@ The same panel's **Switch Display Mode** shortcut switches between iCUE widgets 
 Starting with 0.20.1, newly opened botRanch terminals use a quiet original 0.78-second two-note chime instead of the Windows default bell. This replaces terminal bell audio, including OMP completion and other terminal attention bells; it adds no duplicate completion notification. Existing notification timing, taskbar highlighting and terminal mute settings remain in effect. The sound is bundled locally and requires no network or model call. Already-open terminals keep their previous sound until safely reopened after work finishes. System-wide Windows sounds and unrelated terminals are unchanged.
 
 The source asset is `sounds/completion.wav`, regenerated with `node tools/generate-ranch-chime.cjs`. The launcher uses Mintty's [per-window BellFile option](https://mintty.github.io/mintty.1.html).
+
+## Reliable activity updates (0.20.2)
+
+The companion now adds fixed, factual activity posts from verified managed-terminal heartbeats, even when the model never calls `ranch_status`. Ordinary sessions report starting and finishing a turn; changes such as reading, editing and running a command appear at most once per phase per turn, spaced at least 30 seconds apart. A recent model-written tweet takes priority. Activity posts are labelled **Activity**, contain no conversation excerpts/tool inputs, and never change Board status or imply checks passed. Board attempts keep their existing authoritative start/completion posts. Old completed turns are not replayed on reconnect, and repeated heartbeats are deduplicated. Failed feed writes can retry without interrupting work.
+
+This fallback runs in the updated companion and works with existing heartbeat-capable managed terminals. It does not force live sessions to restart or backfill old work. The companion itself must be updated safely before the fallback becomes active.

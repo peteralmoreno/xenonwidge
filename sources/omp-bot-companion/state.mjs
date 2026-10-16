@@ -24,7 +24,7 @@ export class BotState{
     this.beforeCompaction=null;break;
    case 'agent_end':{
     this.tools.clear();this.approvals.clear();
-    if(e.willContinue||e.pending){this.set('working','Work is continuing');break;}
+    if(e.willContinue||e.pending||e.isTerminal===false){this.set('working','Work is continuing');break;}
     const last=[...(e.messages||[])].reverse().find(m=>m.role==='assistant');
     this.finishedAt=now;
     this.set(last?.stopReason==='error'?'error':last?.stopReason==='aborted'?'ready':'done',last?.stopReason==='aborted'?'Stopped — ready for a question':undefined);break;
