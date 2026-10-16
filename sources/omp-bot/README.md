@@ -1,4 +1,4 @@
-# Bot Ranch 0.20.3
+# Bot Ranch 0.20.4
 
 Bot Ranch is an observational ranch with playful bot movement, status, tweets and an integrated viewing desk. The desktop sidebar owns Board, Bots and Factory management. Both use one local companion and support six residents.
 
@@ -62,3 +62,9 @@ The Ranch feed uses compact posts with bot names and timestamps. Fresh bot progr
 The desk feed is a shared log of meaningful events: task pickup, task completion or review, ordinary work starting/finishing, needing help, and one relaxing notice after becoming idle. Automatic posts use existing runtime events, require no model calls, and never narrate file reads, commands or tool names. Wording varies lightly by personality; it cannot invent accomplishments. Ordinary work completion never marks a Board task Done. Existing history is retained.
 
 Use `ranch_status` for actual milestones or a specific request for help. Communication checkpoints can be written in task instructions, for example: "Post a short update when the cause is confirmed, after the fix is implemented, and after verification. Continue between updates; stop only if approval is explicitly required." This uses the existing status tool; there is no separate checkpoint editor. The bot must actually reach a checkpoint before reporting it. See the [status guide](../../docs/guides/bot-ranch-pipeline.md#short-public-status-updates).
+
+## Task stations (0.20.4)
+
+In the sidebar or Full Board task editor, choose **Task station**: Reading nook, Research station, Writing bench, Workshop, or Auto (spread out). Explicit choices keep the bot at that station throughout active work, regardless of tool changes. Auto spreads residents across the four stations using stable ranch slots; it never calls a model to guess a topic. Help/error, sleep and offline states retain their usual bell/home/charging behavior. Follow-ups inherit the parent's station; active tasks remain protected from editing.
+
+The visible Thinking activity is now called Working. Its internal runtime state remains compatible with existing extensions and work checks. Task station changes visual placement, not role, model, permissions or project folder.

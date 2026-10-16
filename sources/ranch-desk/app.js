@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const base = location.protocol === 'http:' && location.hostname === '127.0.0.1' && location.pathname.startsWith('/desk/') ? location.origin : 'http://127.0.0.1:43822';
-  const states = {ready:'Ready',reading:'Reading',researching:'Researching',writing:'Writing',running:'Running',thinking:'Thinking',working:'Working',waiting:'Needs you',done:'Done',error:'Needs attention',offline:'Offline'};
+  const states = {ready:'Ready',reading:'Reading',researching:'Researching',writing:'Writing',running:'Running',thinking:'Working',working:'Working',waiting:'Needs you',done:'Done',error:'Needs attention',offline:'Offline'};
   const colors = ['#e58d77','#68bbc3','#ddb55c','#a396ca','#e78fb3','#e8a05b','#a8c966','#65b58e','#729edb','#8585d5','#bbc5cb','#cf7070','#e4dcad','#66d9ce','#d976ed','#a78362','#ff2d2d','#ff4dd8','#2ec4ff','#7cff3f','#ff6b00','#ffd400','#00e676','#00b8a9','#0a7dff','#5e35ff','#9b30ff','#ff0088','#ff4f6d','#b388ff','#ffffff','#151515'];
   let key = '', sessions = [], selected = '', connected = false, polling = false, generation = 0;
   let supportsSelection = false, supportsFocus = false, revision = -1, selectionInstance = '', selectionEpoch = 0, selectionBusy = false, desired = '', focusBusy = false;

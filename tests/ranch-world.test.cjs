@@ -16,17 +16,17 @@ test('map definitions own activity routes and reject missing destinations',()=>{
  assert.throws(()=>validateMap({...alternate,workRoutes:{...alternate.workRoutes,reading:undefined}}),/invalid map/i);
 });
 test('changing map reroutes work to its matching station',()=>{
- const {step}=require('../sources/omp-bot/world.js');const bot={slot:0,session:{state:'writing'}};
+ const {step}=require('../sources/omp-bot/world.js');const bot={slot:0,session:{state:'writing',workStation:'writing'}};
  step(bot,'work',0,0,true,450,90,1688,90);const meadow={...bot.position};step(bot,'work',10,0,true,450,90,1688,90,false,'courtyard');assert.ok(bot.position.x>meadow.x+40);assert.ok(bot.position.y<meadow.y-40);
 });
-test('work activities change destinations immediately and attention goes to the bell',()=>{
+test('task station changes destinations explicitly and attention goes to the bell',()=>{
  const {step}=require('../sources/omp-bot/world.js');const bot={slot:0,session:{state:'reading'}};step(bot,'work',0,0,true,450,90,1650,90);const reading={...bot.position};assert.equal(bot.station,'reading');assert.equal(bot.hammering,false);
- bot.session.state='researching';step(bot,'work',1,0,true,450,90,1650,90);assert.equal(bot.station,'researching');assert.ok(bot.position.x>reading.x+30);
- bot.session.state='writing';step(bot,'work',2,0,true,450,90,1650,90);assert.equal(bot.station,'writing');assert.ok(bot.position.y>reading.y+30);
- bot.session.state='running';step(bot,'work',3,0,true,450,90,1650,90);assert.equal(bot.hammering,true);
- bot.session.state='thinking';step(bot,'work',3.5,0,true,450,90,1650,90);assert.equal(bot.station,'workshop');assert.equal(bot.hammering,true);
+ bot.session.state='researching';bot.session.workStation='researching';step(bot,'work',1,0,true,450,90,1650,90);assert.equal(bot.station,'researching');assert.ok(bot.position.x>reading.x+30);
+ bot.session.state='writing';bot.session.workStation='writing';step(bot,'work',2,0,true,450,90,1650,90);assert.equal(bot.station,'writing');assert.ok(bot.position.y>reading.y+30);
+ bot.session.state='running';bot.session.workStation='workshop';step(bot,'work',3,0,true,450,90,1650,90);assert.equal(bot.hammering,true);
+ bot.session.state='thinking';bot.session.workStation='workshop';step(bot,'work',3.5,0,true,450,90,1650,90);assert.equal(bot.station,'workshop');assert.equal(bot.hammering,true);
  step(bot,'waiting',4,0,true,450,90,1650,90);assert.equal(bot.station,'bell');assert.ok(Math.abs(bot.position.y-50)<25);assert.ok(Math.abs(bot.position.x-50)>5);
- const positions=[];for(let slot=0;slot<4;slot++){const b={slot,session:{state:'reading'}};step(b,'work',0,0,true,450,90,1650,90);positions.push(b.position.x);}assert.equal(new Set(positions).size,4);
+ const positions=[];for(let slot=0;slot<4;slot++){const b={slot,session:{state:'reading'}};step(b,'work',0,0,true,450,90,1650,90);positions.push(JSON.stringify(b.position));}assert.equal(new Set(positions).size,4);
 });
 test('Done presentation expires at three minutes without changing task state or resetting missing timestamps',()=>{
  const {present,mode}=require('../sources/omp-bot/world.js'),seen=new Map();const done={id:'bot-1',state:'done',finishedAt:1000};assert.equal(present(done,180999,seen).state,'done');const expired=present(done,181000,seen);assert.equal(expired.state,'ready');assert.equal(expired.presentationExpired,true);assert.equal(mode(expired,181000,120),'idle');assert.equal(done.state,'done');
@@ -63,7 +63,7 @@ test('curious residents roam without extra scenery and work interrupts excursion
   assert.equal(bot.visit,null);assert.notDeepEqual(bot.target,homes[slot]);const destination={...bot.target};
   for(let time=2050;time<=18000;time+=50){step(bot,'idle',time,.05,false);if(!bot.walking)break;}
   assert.ok(Math.hypot(bot.position.x-destination.x,bot.position.y-destination.y)<1,'finish roaming walks');
-  step(bot,'work',18001,0,true);assert.equal(bot.station,'workshop');assert.equal(bot.visit,null);
+  step(bot,'work',18001,0,true);assert.equal(bot.station,['reading','researching','writing','workshop'][slot%4]);assert.equal(bot.visit,null);
   step(bot,'sleep',18002,0,true);assert.deepEqual(bot.position,homes[slot]);
  }
 });

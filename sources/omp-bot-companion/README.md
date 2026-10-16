@@ -1,4 +1,4 @@
-# Bot Ranch Central Companion 0.20.3
+# Bot Ranch Central Companion 0.20.4
 
 Run `Install botRanch.cmd` once. It installs under `%LOCALAPPDATA%\Programs\botRanch` and creates the **botRanch** Start menu shortcut. That shortcut opens the floating desktop dock and starts or reuses the companion. Use **Board** inside the sidebar. **Full Board**, **Settings**, **Connection & recovery**, and **AI Sync** open separate native windows. The installer keeps stable desktop and `botRanch-cli.cmd` launchers, both following the current release. Your selected bot home and existing settings remain separate. Active work blocks replacement.
 
@@ -79,3 +79,9 @@ Choose **Project Manager** as a bot role, then use **AI Sync** to choose Inspect
 The Ranch feed automatically reports meaningful task/work transitions and occasional idle/help notices, with short personality-based wording. It does not emit file-read or command-running chatter. Lifecycle and idle posts require no model calls. Agent-authored milestones still use `ranch_status`; list desired communication checkpoints in task instructions and explicitly say if one requires human approval. Normal checkpoints post and continue. Start a fresh bot session safely after updating to load revised agent reporting instructions.
 
 The Ranch bell opens a menu before taking action: wake sleepers, ask eligible idle bots to check work, open/focus a chosen active Project Manager, or pause/resume new automatic pickups. Current work is never interrupted by these actions. The companion connection key authenticates `POST /control/profiles/check-work` (empty body), `POST /control/project-manager` (`{"id":"active-pm-profile-id"}`), and the existing `POST /control/pickup` (`{"paused":true}`). Checks return per-bot outcomes and respect global/per-bot pickup policy. No broadcast message is sent.
+
+## Task station for users and Project Managers (0.20.4)
+
+Task editors expose `workStation`: `auto` (default), `reading`, `researching`, `writing`, or `workshop`. AI Sync `task.create` and `task.update` support the same field; inspect the catalog for the schema and use the normal preview/apply flow. Example pending-task changes: `{"workStation":"researching"}`. It survives portable task exports, restarts, dispatch snapshots and follow-ups. Active tasks cannot be edited. This is visual task categorization and placement, independent of bot role, model, permissions, or actual tools used.
+
+Auto spreads residents across the four stations. Explicit stations remain fixed during active work, including Thinking (now displayed as Working), and attention/sleep/offline behavior takes precedence. Existing tasks without a station default to Auto.

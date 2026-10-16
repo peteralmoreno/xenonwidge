@@ -40,10 +40,10 @@ test('sidebar explains automatic continuity with waiting text and preferred-bot 
  await page.getByRole('button',{name:'Back to Board'}).click();
  await page.getByRole('button',{name:'New task'}).first().click();
  await page.getByLabel('Task title',{exact:true}).fill('Sticky draft');
- await page.getByLabel('Instructions',{exact:true}).fill('Keep the sticky override.');
+ await page.getByLabel('Instructions',{exact:true}).fill('Keep the sticky override.');await page.getByRole('combobox',{name:'Task station',exact:true}).selectOption('researching');
  await expect(page.getByLabel('Sticky preference')).toHaveCount(0);
  await page.getByRole('button',{name:'Save task',exact:true}).click();
- expect(await page.evaluate(()=>window.stickyCalls.at(-1))).toMatchObject({name:'task-save',body:{title:'Sticky draft',stickyMode:'inherit'}});
+ expect(await page.evaluate(()=>window.stickyCalls.at(-1))).toMatchObject({name:'task-save',body:{title:'Sticky draft',stickyMode:'inherit',workStation:'researching'}});
  await page.getByRole('button',{name:'Bots',exact:true}).click();
  await expect(page.getByRole('list',{name:'Cedar current and next work'})).toContainText('Current: Current work');
  await expect(page.getByRole('list',{name:'Cedar current and next work'})).toContainText('Up next: Polish the handoff');
@@ -56,7 +56,7 @@ test('Full Board sticky edits reject stale revisions and preserve fields in the 
  const {createBridge}=await import('../sources/omp-bot-companion/server.mjs');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ranch-sticky-board-'));
  const manager=new RanchManager({dir,native:{checks:async()=>[],status:async()=> 'closed'}});
- const saved=manager.saveTask({title:'Update the guide',projectFolder:manager.library.root,instructions:'Keep the notes clear.',family:{name:'Guides',color:'mint'},stickyMode:'on',expectedRevision:0});
+ const saved=manager.saveTask({title:'Update the guide',projectFolder:manager.library.root,instructions:'Keep the notes clear.',workStation:'writing',family:{name:'Guides',color:'mint'},stickyMode:'on',expectedRevision:0});
  const server=createBridge({key:'a'.repeat(64),adminKey:'b'.repeat(64),manager});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const url='http://127.0.0.1:'+server.address().port;
@@ -84,10 +84,10 @@ test('Full Board sticky edits reject stale revisions and preserve fields in the 
   await expect.poll(()=>Object.keys(manager.familyPolicies).length).toBe(0);
   await expect(page.locator('#notice')).toHaveText('Family default and preference reset.');
   await page.getByRole('button',{name:'Edit task',exact:true}).click();
-  await expect(page.locator('#task-sticky-mode')).toHaveValue('off');
+  await expect(page.locator('#task-sticky-mode')).toHaveValue('off');await expect(page.locator('#task-station')).toHaveValue('writing');await page.locator('#task-station').selectOption('researching');
   await page.getByLabel('Task title').fill('Guide saved with sticky off');
   await page.getByRole('button',{name:'Save task',exact:true}).click();
-  expect(manager.tasks[0].stickyMode).toBe('off');
+  expect(manager.tasks[0].stickyMode).toBe('off');expect(manager.tasks[0].workStation).toBe('researching');
   await expect(page.locator('[data-column=inbox] .board-task')).toContainText('Guide saved with sticky off');
  }finally{
   server.closeAllConnections();

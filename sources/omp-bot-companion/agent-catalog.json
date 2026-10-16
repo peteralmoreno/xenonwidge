@@ -123,6 +123,7 @@
       ],
       "optional": [
         "acceptanceCriteria",
+        "workStation",
         "reasoningRequest",
         "modelEligibility",
         "humanReview",
@@ -239,6 +240,17 @@
             "on",
             "off"
           ]
+        },
+        "workStation": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "reading",
+            "researching",
+            "writing",
+            "workshop"
+          ],
+          "description": "Task station on the Ranch. Auto spreads residents across stations. Explicit choice stays fixed during work; does not change role or permissions."
         }
       }
     },
@@ -254,6 +266,7 @@
         "title",
         "instructions",
         "acceptanceCriteria",
+        "workStation",
         "reasoningRequest",
         "modelEligibility",
         "humanReview",
@@ -371,6 +384,17 @@
                 "on",
                 "off"
               ]
+            },
+            "workStation": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "reading",
+                "researching",
+                "writing",
+                "workshop"
+              ],
+              "description": "Task station on the Ranch. Auto spreads residents across stations. Explicit choice stays fixed during work; does not change role or permissions."
             }
           }
         }
@@ -958,6 +982,17 @@
         "on",
         "off"
       ]
+    },
+    "workStation": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "reading",
+        "researching",
+        "writing",
+        "workshop"
+      ],
+      "description": "Task station on the Ranch. Auto spreads residents across stations. Explicit choice stays fixed during work; does not change role or permissions."
     }
   },
   "snapshot": {

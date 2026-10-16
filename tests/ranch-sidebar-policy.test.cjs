@@ -32,3 +32,5 @@ test('companion pop-outs restrict pages, assets and API routes to their exact or
  assert.equal(allowedNavigation(origin+'/setup/',origin),true);
  assert.equal(allowedNavigation(origin+'/admin/state',origin),false);
 });
+
+test('sidebar task-save accepts only known station choices',()=>{const body={title:'Research',instructions:'Investigate',projectFolder:'D:/work',expectedRevision:0};for(const workStation of ['auto','reading','researching','writing','workshop'])assert.equal(p.actionRequest('task-save',{...body,workStation}).body.workStation,workStation);for(const workStation of ['bell','home','unknown',null])assert.throws(()=>p.actionRequest('task-save',{...body,workStation}));});

@@ -32,7 +32,7 @@
  const homes=[{x:18,y:25},{x:82,y:25},{x:18,y:75},{x:82,y:75},{x:18,y:50},{x:82,y:50}],stations=[{x:36,y:25},{x:64,y:25},{x:36,y:75},{x:64,y:75}];
  function step(bot,mode,time,dt,paused,height=400,botHeight=90,width=800,botWidth=100,quiet=false,map='meadow'){
   const activeMap=resolveMap(map),home=homes[bot.slot],personality=bot.personality||bot.session?.personality||'calm',trait=personalities[personality]||personalities.calm;
-  const activity=bot.session?.state||'working';const stationName=mode==='work'?activeMap.workRoutes[activity]:mode==='waiting'||mode==='error'?'bell':mode==='offline'?'charging':mode==='sleep'?'home':'roam';
+  const activity=bot.session?.state||'working',workStations=['reading','researching','writing','workshop'],preferred=workStations.includes(bot.session?.workStation)?bot.session.workStation:workStations[bot.slot%workStations.length],workStation=activeMap.stations[preferred]?preferred:activeMap.workRoutes[activity];const stationName=mode==='work'?workStation:mode==='waiting'||mode==='error'?'bell':mode==='offline'?'charging':mode==='sleep'?'home':'roam';
   const center=activeMap.stations[stationName];let destination=mode==='offline'?docks[bot.slot]:home;
   if(center){const gap=botWidth+8,compact=height<2*(botHeight+8)+16;const standingCenter={...center,y:center.y+(stationName!=='bell'&&height>250?botHeight*.55/height*100:0)};destination=stationName==='bell'&&height>=3*(botHeight+8)+16?{x:center.x+(bot.slot%2?1:-1)*(botWidth/2+60)/width*100,y:center.y+(Math.floor(bot.slot/2)-1)*(botHeight+8)/height*100}:rowTarget(standingCenter,bot.slot,width,height,botHeight,gap,compact);}
   const layout=[width,height,botWidth,botHeight,typeof map==='string'?map:'custom'].join(':');
@@ -44,7 +44,7 @@
    const visits=bot.visits++,neighbors=personality==='sociable'?(bot.neighbors||[]).filter(b=>b!==bot&&b.mode==='idle'&&b.position):[];
    if(neighbors.length&&visits%2===0){const neighbor=neighbors[(bot.slot+visits)%neighbors.length];bot.visit='neighbor';bot.target={x:neighbor.position.x+(bot.slot%2?1:-1)*(botWidth+14)/width*100,y:neighbor.position.y};}
    else{
-    const center=personality==='focused'?activeMap.stations[activeMap.workRoutes[activity]]||home:home;
+    const center=personality==='focused'?activeMap.stations[workStation]||home:home;
     const angle=(bot.slot*1.7+visits*2.4),range=trait.range*(quiet?.5:1);bot.visit=null;bot.target={x:center.x+Math.cos(angle)*range,y:center.y+Math.sin(angle)*range*.55};
    }
    constrain(bot.target);bot.dwellPending=true;bot.next=Infinity;
