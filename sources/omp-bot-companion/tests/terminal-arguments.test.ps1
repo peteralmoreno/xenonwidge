@@ -6,7 +6,7 @@ if ($parseErrors.Count) { throw 'Launcher has PowerShell parse errors.' }
 $function = $ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'ConvertTo-NativeArgument'}, $true)
 if (-not $function) { throw 'Missing native argument encoder.' }
 Invoke-Expression $function.Extent.Text
-$examples = @('Bot Ranch - Brick', 'Bot Ranch - A "quote"', 'Bot Ranch - a\"b', 'Bot Ranch - trail\', 'Bot Ranch - $(whoami); & |', 'Bot Ranch - Renée')
+$examples = @('BellFile=D:/Bot Ranch/sounds/completion.wav', 'Bot Ranch - Brick', 'Bot Ranch - A "quote"', 'Bot Ranch - a\"b', 'Bot Ranch - trail\', 'Bot Ranch - $(whoami); & |', 'Bot Ranch - Renée')
 foreach ($example in $examples) {
     $start = New-Object Diagnostics.ProcessStartInfo
     $start.FileName = (Get-Command node.exe).Source

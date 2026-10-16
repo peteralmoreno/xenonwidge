@@ -40,8 +40,15 @@ try {
     if ($env:OMP_BOT_COLOR -match '^(?:[0-9]|[12][0-9]|3[01])$') { $colorIndex = [int]$env:OMP_BOT_COLOR }
     $accent = $palette[$colorIndex]
     $background = (0..2 | ForEach-Object { [int](18 + 0.12 * [int]('0x' + $accent.Substring($_ * 2,2))) }) -join ','
+    # Per-terminal bell replacement; preserve user mute (BellType=0) and notification timing.
+    $chime = (Join-Path $PSScriptRoot 'sounds/completion.wav') -replace '\\','/'
+    $bellOptions = @()
+    if (Test-Path -LiteralPath $chime -PathType Leaf) {
+        $bellOptions = @('-o',('BellFile=' + $chime),'-o','BellFreq=0')
+        foreach ($volume in 2..7) { $bellOptions += @('-o',('BellFile' + $volume + '=' + $chime)) }
+    }
     # --nodaemon retains the PID; --Title protects the resident title from OSC changes.
-    $terminalArguments = @('--nodaemon','--Title',$title,'--fg','#e9efdb','--bg',$background,'--cr',('#' + $accent),'--exec',$bash,'--login',$wrapper)
+    $terminalArguments = $bellOptions + @('--nodaemon','--Title',$title,'--fg','#e9efdb','--bg',$background,'--cr',('#' + $accent),'--exec',$bash,'--login',$wrapper)
     $argumentLine = ($terminalArguments | ForEach-Object { ConvertTo-NativeArgument $_ }) -join ' '
     $terminalProcess = Start-Process -FilePath $mintty -ArgumentList $argumentLine -WorkingDirectory $resolvedProject -WindowStyle Normal -PassThru
     $binding = & $helper identity terminal $terminalProcess.Id

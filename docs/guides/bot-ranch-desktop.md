@@ -46,3 +46,9 @@ The installed iCUE 5.52.93 resources place widget interaction in a child view an
 For a supported route between iCUE pages, open **iCUE → XENEON EDGE → Screen Setup** and assign keystrokes to **Previous Display Screen** and **Next Display Screen**. Press those configured shortcuts when you need to leave an interactive widget. These fields appear in CORSAIR's [official Screen Setup screenshot](https://d1q3zw97enxzq2.cloudfront.net/images/Screenshot_2026-08-03_095837.width-540.format-webp.webp); do not assume a default page shortcut. Bot Ranch does not synthesize these shortcuts or change the bindings.
 
 The same panel's **Switch Display Mode** shortcut switches between iCUE widgets and the Windows desktop. CORSAIR documents setup and background operation in its [display-mode guide](https://www.corsair.com/us/en/explorer/diy-builder/accessories/how-to-switch-between-widgets-and-monitor-on-xeneon-edge/). This is separate from switching widget pages.
+
+## Completion chime
+
+Starting with 0.20.1, newly opened botRanch terminals use a quiet original 0.78-second two-note chime instead of the Windows default bell. This replaces terminal bell audio, including OMP completion and other terminal attention bells; it adds no duplicate completion notification. Existing notification timing, taskbar highlighting and terminal mute settings remain in effect. The sound is bundled locally and requires no network or model call. Already-open terminals keep their previous sound until safely reopened after work finishes. System-wide Windows sounds and unrelated terminals are unchanged.
+
+The source asset is `sounds/completion.wav`, regenerated with `node tools/generate-ranch-chime.cjs`. The launcher uses Mintty's [per-window BellFile option](https://mintty.github.io/mintty.1.html).

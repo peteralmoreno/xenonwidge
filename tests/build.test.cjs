@@ -22,7 +22,7 @@ test('release staging includes complete source UI and excludes private or genera
     const skillResult = require('node:child_process').spawnSync(process.execPath,[path.join(output,'ranch-cli.mjs'),'skill','--json'],{cwd:temporary,encoding:'utf8',windowsHide:true,env:{...process.env,OMP_BOT_KEY_FILE:path.join(temporary,'missing-credentials')}});
     assert.equal(skillResult.status,0,skillResult.stderr);
     const skill=JSON.parse(skillResult.stdout);assert.equal(skill.path,path.join(output,'skills/bot-ranch-pm/SKILL.md'));assert.ok(skill.text.includes('humanReview'));
-    for (const file of ['pipeline.mjs','pipeline-manager.mjs','updates.mjs']) assert.ok(fs.statSync(path.join(output,file)).isFile(),file);
+    for (const file of ['pipeline.mjs','pipeline-manager.mjs','updates.mjs','sounds/completion.wav']) assert.ok(fs.statSync(path.join(output,file)).isFile(),file);
     for (const file of ['guides/bot-ranch-loop.md','guides/bot-ranch-pipeline.md']) assert.ok(fs.statSync(path.join(output,file)).isFile(),file);
     assert.ok(fs.readFileSync(path.join(output,'README.md'),'utf8').includes('(guides/bot-ranch-loop.md)'));
     for (const file of widgetFiles.ranch) assert.deepEqual(fs.readFileSync(path.join(output, 'ui', file)), fs.readFileSync(path.join(source, projects.ranch.source, file)));
