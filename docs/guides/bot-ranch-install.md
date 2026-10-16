@@ -1,8 +1,8 @@
 # Bot Ranch install on a new Windows PC
 
-This guide installs the current Bot Ranch widget and central companion from a fresh Windows PC. The current source manifest is **0.20.4**. Use the widget package and companion ZIP with the same version; do not mix packages from different releases.
+This guide installs the current Bot Ranch widget and central companion from a fresh Windows PC. The current source manifest is **0.20.5**. Download `bot-ranch-0.20.5.zip` from GitHub Releases for the companion and matching iCUE widget together. Do not mix versions.
 
-For a prebuilt release, start at [Install the release](#install-the-release). To build the packages from this repository, follow the complete guide.
+For a prebuilt release, start at [Install the central companion](#3-install-the-central-companion). To build the packages from this repository, follow the complete guide.
 
 ## What is installed
 
@@ -53,12 +53,11 @@ npm run build:ranch
 Confirm the matching Bot Ranch outputs exist:
 
 ```powershell
-$version = '0.20.4'
-Test-Path "artifacts\releases\bot-ranch\bot-ranch-$version.icuewidget"
-Test-Path "artifacts\releases\bot-ranch\bot-ranch-companion-$version.zip"
+$version = '0.20.5'
+Test-Path "artifacts\releases\bot-ranch\bot-ranch-$version.zip"
 ```
 
-Both commands must return `True`. The generated files are disposable; rebuild them when the source changes.
+The command must return `True`. The generated files are disposable; rebuild them when the source changes.
 
 ## 3. Install the central companion
 
@@ -66,7 +65,7 @@ The expanded panel shows **App** (the running desktop) and **Companion** version
 
 For an upgrade, first use the existing tray menu's **Quit dock** or **Quit desktop app** so the new executable can open. This leaves bot work running. Finish active work before reopening a release that needs to update the companion; its startup guard will refuse to replace a busy companion.
 
-1. Extract the **entire** matching `bot-ranch-companion-0.20.4.zip` to a writable temporary folder. Do not run the installer from inside the ZIP and do not remove files from the extracted package.
+1. Extract the **entire** complete `bot-ranch-0.20.5.zip` to a writable temporary folder. Do not run the installer from inside the ZIP and do not remove files from the extracted package.
 2. Run `Install botRanch.cmd` once.
 3. Approve the normal Windows script prompt if one appears. The installer copies the release to `%LOCALAPPDATA%\Programs\botRanch` and creates a **botRanch** Start menu shortcut.
 4. Open **botRanch** from the Start menu. The stable launcher opens the floating desktop dock and starts or reuses the companion. Click the robot mark to expand the sidebar. Use **Board**, **Bots** or **Factory** there; **Full Board** and **Settings** open separate windows.
@@ -96,7 +95,7 @@ The active ranch supports up to six profiles. Additional saved profiles remain i
 
 This section is for **mode A**. Mode B uses the standalone Ranch window and requires no iCUE import or manual key entry.
 
-1. In iCUE, open the widget section and import `artifacts\releases\bot-ranch\bot-ranch-0.20.4.icuewidget`.
+1. In iCUE, open the widget section and import `iCUE\bot-ranch-0.20.5.icuewidget` from the extracted complete ZIP (or the matching standalone widget built from source).
 2. Place the widget in a **Large** slot. Large and XL show the observational ranch and viewing desk; manage tasks in the desktop sidebar. The separate Ranch Desk widget is not required.
 3. In iCUE, allow `127.0.0.1:43822` under **Settings > Software Settings > Widget Access**.
 4. Open the imported widget's **Connect** dialog and paste the connection key from the companion's **Settings > Connection** page.
@@ -144,7 +143,7 @@ For build details, package paths, and verification boundaries, see [Build, insta
 
 ## Managed Windows terminals
 
-Version 0.20.4 compiles the terminal window helper from checked-in C# source during packaging. Launcher and window-control scripts avoid dynamic PowerShell type compilation so they can run in Constrained Language Mode. Settings checks whether the packaged helper can execute. Enterprise application-control policy may still require an administrator to allow the unsigned helper; botRanch does not change that policy.
+Version 0.20.5 compiles the terminal window helper from checked-in C# source during packaging. Launcher and window-control scripts avoid dynamic PowerShell type compilation so they can run in Constrained Language Mode. Settings checks whether the packaged helper can execute. Enterprise application-control policy may still require an administrator to allow the unsigned helper; botRanch does not change that policy.
 
 For development directly from a source checkout, run `node tools/build-native.cjs` once before opening managed bot terminals. Packaged installations already include the compiled helper and require no extra script. Rebuilding uses the Windows .NET Framework compiler; its executable timestamps and module IDs mean separate builds are not byte-identical.
 

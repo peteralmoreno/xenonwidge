@@ -50,3 +50,6 @@ Record the exact device model, installed iCUE version, desired information/actio
 - [Bot Ranch /loop and Pipeline monitoring](guides/bot-ranch-loop.md): mode choice, native OMP examples, token costs and planned integration.
 
 - [Pipeline API jobs and public updates](guides/bot-ranch-pipeline.md): generic API contract, sleep/resume, designs and the shared feed.
+
+- [PM / AI Sync workflow](guides/bot-ranch-ai-sync.md).
+- [Local API surfaces](guides/bot-ranch-api.md).

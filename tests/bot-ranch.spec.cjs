@@ -46,6 +46,7 @@ test('status-only companions remain useful and a dropped connection sleeps every
  await page.route('http://ranch.test/**',r=>r.fulfill({path:path.join(__dirname,'../sources/omp-bot',new URL(r.request().url()).pathname==='/'?'index.html':new URL(r.request().url()).pathname)}));
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('http://ranch.test/');await page.locator('#connect').click();await page.getByLabel('Connection key').fill('a'.repeat(64));await page.getByRole('button',{name:'Connect',exact:true}).click();
  const bot=page.locator('.bot');await expect(bot).toHaveAttribute('data-walking','false');await bot.dblclick();await page.waitForTimeout(500);expect(focusCalls).toBe(0);await expect(page.locator('#desk-terminal')).toBeDisabled();
- await page.emulateMedia({reducedMotion:'no-preference'});state='writing';await expect(bot).toHaveAttribute('data-mode','work');await expect(bot).toHaveAttribute('data-station','writing');await expect(bot).toHaveAttribute('data-hammering','false');
+ await page.emulateMedia({reducedMotion:'no-preference'});state='writing';await expect(bot).toHaveAttribute('data-mode','work');await expect(bot).toHaveAttribute('data-station','reading'); // Auto placement follows the resident slot, not the current tool.
+await expect(bot).toHaveAttribute('data-hammering','false');
  online=false;await expect(bot).toHaveAttribute('data-state','offline');await expect(page.locator('#state')).toHaveText('Offline');
 });

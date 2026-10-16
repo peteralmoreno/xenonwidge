@@ -22,7 +22,7 @@ A useful delegation is: **"Manage the Board for this project. Break the work int
 | Discover exact schemas, types, enums and restrictions | `catalog --json` |
 | Read permissions and organizational receipts | `access --json`, `history --json` |
 | Create/edit held tickets, assign bots, reorder queues, set families/sticky rules and dependencies | Preview/apply change sets |
-| Release/start work, request idle work checks | `release`, `start`, `ring` in Operate mode |
+| Release/start work, wake sleeping residents | `release`, `start`, `ring` in Operate mode |
 | Hold pending work, accept non-human-review results, create released follow-ups, archive history | Structured `operate --file action.json` in Operate mode |
 | Create/edit bots or roles, change membership, open/close terminals, delete records, or change access | Use the relevant app controls; these are not exposed by the AI operation catalog |
 
@@ -31,8 +31,8 @@ All successful changes use the same manager and storage as the sidebar, Ranch De
 ## Access modes
 
 - **Inspect** reads the snapshot and history and previews a change set. It cannot apply it.
-- **Organize** can create held drafts and edit pending task titles, instructions, acceptance criteria, requested reasoning, model eligibility, human review, family, dependencies, assignment, queue order, and sticky settings. New tasks remain `todo` and unreleased. Organizing does not start work or run an LLM.
-- **Operate** adds explicit release, start, hold, idle work checks and supported lifecycle actions through the manager's existing validation. A start still uses normal workspace, profile, model, runtime, and active-work checks. Holding a ticket is not an interruption. Human-review acceptance remains with the human.
+- **Organize** can create held drafts and edit pending task titles, instructions, acceptance criteria, task station, requested reasoning, model eligibility, human review, family, dependencies, assignment, queue order, and sticky settings. New tasks remain `todo` and unreleased. Organizing does not start work or run an LLM.
+- **Operate** adds explicit release, start, hold, sleeping-bot wake requests and supported lifecycle actions through the manager's existing validation. A start still uses normal workspace, profile, model, runtime, and active-work checks. Holding a ticket is not an interruption. Human-review acceptance remains with the human.
 
 These modes limit application operations. They are not an operating-system sandbox: a local process running as the same user may be able to read that user's private files. The actor value in a change set is a caller-supplied display label, not a verified identity.
 
@@ -124,3 +124,17 @@ Organize-mode atomic operations include `family.preferBot`, `family.clearPrefere
 In Operate mode, `wake` asks sleeping bots to check in, excluding working and offline bots. For a sleeping Pipeline it performs one status check without starting a job or extending its waiting budget.
 
 Use task `attempts[].delivery.phase` and bot `delivery` to distinguish reserved, received, claimed, started and unresolved work. Delivery retries remain attached to the same reservation and source session. Unresolved ownership needs inspection, not blind redispatch. Bot `reporting` exposes support and last accepted report; updated interactive managed sessions can use `ranch_status` even outside a Board task. Public status updates are not completion evidence.
+
+## Task stations, public updates and troubleshooting
+
+The current `task.create` and `task.update` schemas accept `workStation`: `auto`, `reading`, `researching`, `writing`, or `workshop`. Example pending-ticket changes: `{"workStation":"researching"}`. It sets visual task placement, stays fixed through tool changes, and is inherited by follow-ups. Auto spreads bots across stations; no model call guesses the topic. Active tasks remain protected from editing.
+
+The feed reports meaningful lifecycle events automatically. Use task instructions to name intermediate communication checkpoints; `ranch_status` reports actual outcomes or blockers, without tool-by-tool narration. Checkpoints continue unless instructions explicitly require approval. Ordinary work finishing is distinct from a verified task completion.
+
+`ring` and `wake` both target sleeping connected bots. Neither forces an awake bot to pick up work or overrides global/per-bot automatic pickup. A released ticket can wait because the bot has `autoPickup:false`, a dependency is unfinished, or another attempt owns its project workspace. Inspect `waitingReason`, `autoPickup`, `pickupPaused`, delivery and attempts. In Operate mode, an authorized `start TASK_ID PROFILE_ID --revision N` explicitly requests dispatch without enabling automatic pickup; all normal checks still apply.
+
+A successful request is not evidence that the bot started. Per-bot Check work is an app management control and can request a one-time check with automatic pickup off; it is not an AI catalog action. Report its pending/result state truthfully. Open authenticated Full Board from the app, rather than collecting admin fragments for a bare browser URL.
+
+Inspect allows preview only. Ask the user to choose Organize/Operate in AI Sync when the delegation needs those operations. Do not route around an Inspect restriction through UI automation or broader management endpoints. Correct PowerShell invocation uses `&` before the quoted `.cmd` path; shell failures occur before Ranch receives a request.
+
+See the [API surface reference](bot-ranch-api.md) for the distinction between AI, app management, and runtime interfaces.

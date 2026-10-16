@@ -54,7 +54,7 @@ On conflict, re-read and re-plan; do not replace the old revision with the new o
 
 ## Run and follow through
 
-After authorized release, use current revisions with `release TASK_ID --revision N`; `start TASK_ID PROFILE_ID --revision N` requests explicit dispatch. `ring` asks eligible residents to check work when idle; it neither opens bank bots nor interrupts active work. Pickup, dependency, workspace, model and runtime checks remain authoritative.
+After authorized release, use current revisions with `release TASK_ID --revision N`; `start TASK_ID PROFILE_ID --revision N` requests explicit dispatch. `ring` is a compatibility alias for `wake`: it wakes sleeping, connected residents only. It does not force already-awake bots to pick up work, open bank bots, or override automatic-pickup preferences. Pickup, dependency, workspace, model and runtime checks remain authoritative.
 
 Use `operate --file action.json` for the catalog's structured actions. Examples:
 
@@ -85,3 +85,18 @@ Organize-mode atomic operations include `family.preferBot`, `family.clearPrefere
 In Operate mode, `wake` asks sleeping bots to check in, excluding working and offline bots. For a sleeping Pipeline it performs one status check without starting a job or extending its waiting budget.
 
 Use task `attempts[].delivery.phase` and bot `delivery` to distinguish reserved, received, claimed, started and unresolved work. Delivery retries remain attached to the same reservation and source session. Unresolved ownership needs inspection, not blind redispatch. Bot `reporting` exposes support and last accepted report; updated interactive managed sessions can use `ranch_status` even outside a Board task. Public status updates are not completion evidence.
+
+## Task stations and communication checkpoints
+
+Use `workStation` in `task.create` or `task.update`: `auto`, `reading`, `researching`, `writing`, or `workshop`. Choose the task's subject up front; the bot stays at that station through tool changes. Auto spreads residents across stations. Placement does not change the role, model or permissions; follow-ups inherit it. Active tasks cannot be edited.
+
+For intermediate reports, put specific communication checkpoints in task instructions, such as "Post when the cause is confirmed, after implementation, and after verification; continue unless approval is explicitly requested." Agents use `ranch_status` for actual milestones or blockers. The feed also has automatic pickup/completion/help/idle notices requiring no model calls. Neither a feed post nor silence proves task completion.
+
+## Troubleshooting observed workflow issues
+
+- In PowerShell, invoke a quoted `.cmd` path with `&`, as above. From another shell, use its own quoting syntax or `node` with the absolute `ranch-cli.mjs` path supplied by AI Sync. A shell quoting failure occurs before the API is called.
+- If access is Inspect, prepare a preview and tell the user which AI Sync mode the requested changes need: Organize for pending edits, Operate for execution. Do not use UI automation or broader `/admin/*` or `/control/*` routes to work around the mode. A user's direct use of their own app controls is separate from agent access.
+- Open Full Board from botRanch for an authenticated window. A bare `/board/` URL may be unpaired; do not extract pairing credentials or paste authenticated URLs into reports.
+- A released task still needs both global pickup enabled and a suitable bot with `autoPickup:true` for automatic pickup. If the user's delegation includes execution and Operate is enabled, `start TASK_ID PROFILE_ID --revision N` is an explicit dispatch request even when automatic pickup is disabled. It still rejects unsafe/busy/ineligible starts.
+- The per-bot app **Check work** action can request a one-time check despite automatic pickup being off; its HTTP 200 only acknowledges the request. This management control is not a PM catalog operation. Follow `workCheckResult`, delivery and task attempts before claiming work started.
+- Tasks sharing one project workspace are serialized while a prior attempt owns it. Check `waitingReason`; do not remove that ownership or change project folders merely to force concurrency.

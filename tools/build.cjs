@@ -25,7 +25,7 @@ const ranchFiles = [
   'launch-companion.sh', 'open-setup.sh', 'ranch-terminal.sh', 'start-bot-ranch.sh', 'start-omp.sh',
   'setup/index.html', 'setup/app.js', 'setup/style.css', 'setup/settings.css', 'setup/board.html', 'setup/board.js', 'setup/board.css',
 ];
-const ranchGuides = ['bot-ranch-loop.md', 'bot-ranch-pipeline.md', 'bot-ranch-desktop.md', 'bot-ranch-install.md', 'bot-ranch-ai-sync.md'];
+const ranchGuides = ['bot-ranch-loop.md', 'bot-ranch-pipeline.md', 'bot-ranch-desktop.md', 'bot-ranch-install.md', 'bot-ranch-ai-sync.md', 'bot-ranch-api.md'];
 function copyFiles(source, destination, files) {
   for (const file of files) {
     const input = path.join(source, file);
@@ -46,6 +46,31 @@ function stageRanch(sources, destination, {desktop = false, runtime = true} = {}
   const version = JSON.parse(fs.readFileSync(path.join(sources, 'omp-bot', 'manifest.json'), 'utf8')).version;
   const desktopFiles = desktop ? require('./build-desktop.cjs').stageDesktop(sources, path.join(destination, 'desktop'), {runtime}) : [];
   fs.writeFileSync(path.join(destination, 'release.json'), JSON.stringify({version, files:[...ranchFiles,...nativeFiles,...ranchGuides.map(f=>'guides/'+f),...widgetFiles.ranch.map(f=>'ui/'+f),...widgetFiles.desk.map(f=>'desk/'+f),...desktopFiles]},null,2));
+}
+function addRanchBundleFiles(companion, widget, version) {
+  const {createHash}=require('node:crypto');
+  const widgetName=`iCUE/bot-ranch-${version}.icuewidget`;
+  fs.mkdirSync(path.join(companion,'iCUE'),{recursive:true});
+  fs.copyFileSync(widget,path.join(companion,widgetName));
+  fs.writeFileSync(path.join(companion,'START-HERE.txt'),`botRanch ${version} - Windows complete download
+
+1. Extract this entire ZIP to a writable folder.
+2. Run Install botRanch.cmd.
+3. Open botRanch from the Start menu.
+4. For iCUE, import ${widgetName}. Otherwise choose Ranch display > Desktop app.
+
+Finish active bot work before updating the companion. Quit desktop app from the tray before reopening an update.
+Node.js 22.12+ is required. Managed bots also need Git Bash, Bun, OMP and provider access.
+Full instructions: guides/bot-ranch-install.md
+Agent/API docs: guides/bot-ranch-ai-sync.md and guides/bot-ranch-api.md
+Checksums: SHA256SUMS.txt
+`);
+  const manifestPath=path.join(companion,'release.json'),manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));
+  if(manifest.version!==version)throw Error('Bundle and companion versions must match.');
+  manifest.files=[...new Set([...manifest.files,widgetName,'START-HERE.txt'])];
+  fs.writeFileSync(manifestPath,JSON.stringify(manifest,null,2));
+  const sums=[...manifest.files,'release.json'].sort().map(file=>createHash('sha256').update(fs.readFileSync(path.join(companion,file))).digest('hex')+'  '+file);
+  fs.writeFileSync(path.join(companion,'SHA256SUMS.txt'),sums.join('\n')+'\n');
 }
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: root, stdio: 'inherit', windowsHide: true });
@@ -99,6 +124,13 @@ function build(target = 'all', mode = 'build') {
         }
         archive(companion, path.join(staging, name + '.zip'));
         fs.copyFileSync(path.join(staging, name + '.zip'), path.join(release, name + '.zip'));
+        if(key==='ranch'&&mode==='build'){
+          addRanchBundleFiles(companion,path.join(staging,`${project.name}-${version}.icuewidget`),version);
+          const bundle=`${project.name}-${version}.zip`;
+          archive(companion,path.join(staging,bundle));
+          fs.copyFileSync(path.join(staging,bundle),path.join(release,bundle));
+        }
+
       }
       console.log(`${project.name} ${version}: ${release}`);
     }
@@ -108,7 +140,7 @@ function build(target = 'all', mode = 'build') {
     fs.rmSync(staging, { recursive: true, force: true });
   }
 }
-module.exports = { build, stageRanch, widgetFiles, projects };
+module.exports = { build, stageRanch, addRanchBundleFiles, widgetFiles, projects };
 if (require.main === module) {
   try { build(process.argv[2], process.argv[3]); }
   catch (error) { console.error(error.message); process.exitCode = 1; }

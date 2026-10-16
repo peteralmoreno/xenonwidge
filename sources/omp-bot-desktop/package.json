@@ -1,7 +1,7 @@
 {
   "name": "bot-ranch-desktop",
   "productName": "botRanch Dock",
-  "version": "0.20.4",
+  "version": "0.20.5",
   "private": true,
   "description": "A floating desktop dock for the local botRanch companion.",
   "main": "main.cjs"

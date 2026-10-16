@@ -732,7 +732,7 @@
       "required": [
         "action"
       ],
-      "effect": "Requests the manager's existing idle work checks.",
+      "effect": "Compatibility alias for wake: wakes sleeping connected bots only; does not force awake bots to pick up tasks or override global/per-bot automatic pickup. A sleeping Pipeline receives one check without extending its monitoring budget.",
       "additionalProperties": false,
       "properties": {
         "action": {

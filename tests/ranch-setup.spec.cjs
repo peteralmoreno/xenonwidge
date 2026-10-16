@@ -95,7 +95,7 @@ test('Large Ranch observes activity and leaves task and profile management in th
   await expect(page.locator('#scene')).toBeVisible();
   await expect(page.locator('#tasks-tab,#tasks-view,#profile-editor,#desk-clean,#desk-finish-rest,#desk-enable-pickup')).toHaveCount(0);
   const before=JSON.stringify(manager.profiles),attempts=manager.tasks.flatMap(t=>t.attempts||[]).length;
-  await page.locator('#wake-bell').click();await expect(page.locator('#wake-result')).toContainText('skipped');
+  await page.locator('#wake-bell').click();await expect(page.locator('#bell-menu')).toBeVisible();await page.locator('#bell-wake').click();await expect(page.locator('#wake-result')).toContainText('skipped');
   expect(JSON.stringify(manager.profiles)).toBe(before);expect(manager.tasks.flatMap(t=>t.attempts||[])).toHaveLength(attempts);
   expect(manager.runs[profile.id].checkRequested).not.toBe(true);
  }finally{clearInterval(pulse);server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
