@@ -115,7 +115,7 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
     if(now()-session.lastSeen>ttl||session.state==='offline')return reply(409,{error:'Terminal offline'});
     const terminal=terminals.get(request.id);if(!focusTerminal||!terminal)return reply(200,{result:'unavailable'});
     if(focusing||now()-lastFocus<500)return reply(429,{error:'Focus request already in progress'});
-    focusing=true;lastFocus=now();try{const result=await focusTerminal(terminal);return reply(200,{result:['focused','attention','closed','unavailable'].includes(result)?result:'unavailable'});}finally{focusing=false;}
+    focusing=true;lastFocus=now();try{const result=await focusTerminal(terminal);return reply(200,{result:['focused','raised','attention','closed','unavailable'].includes(result)?result:'unavailable'});}finally{focusing=false;}
    }catch{return reply(400,{error:'Invalid focus request'});}
   }
   if(req.method!=='PUT'||req.url!=='/snapshot')return reply(404,{error:'Not found'});

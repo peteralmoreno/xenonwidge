@@ -1,7 +1,10 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');
 test('missing terminal processes return closed without touching any window',{skip:process.platform!=='win32'},()=>{
- const {execFileSync}=require('node:child_process');const path=require('node:path');
- const result=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(__dirname,'../sources/omp-bot-companion/Focus-Terminal.ps1'),'-TerminalPid','2147483647','-Started','638000000000000000'],{encoding:'utf8',windowsHide:true});assert.equal(result.trim(),'closed');
+ const {execFileSync}=require('node:child_process');const path=require('node:path'),fs=require('node:fs'),os=require('node:os');
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ranch-focus-')),source=path.join(__dirname,'../sources/omp-bot-companion');
+ try {require('../tools/build-native.cjs').buildNative(source,dir);fs.copyFileSync(path.join(source,'Focus-Terminal.ps1'),path.join(dir,'Focus-Terminal.ps1'));
+ const result=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(dir,'Focus-Terminal.ps1'),'-TerminalPid','2147483647','-Started','638000000000000000'],{encoding:'utf8',windowsHide:true});assert.equal(result.trim(),'closed');
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('focus requires authentication and a live private terminal binding',async()=>{
  const {createBridge}=await import('../sources/omp-bot-companion/server.mjs');let now=1000;const focused=[];

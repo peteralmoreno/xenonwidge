@@ -1,5 +1,5 @@
-param([Parameter(Mandatory=$true)][string]$Source, [Parameter(Mandatory=$true)][string]$Destination)
+param([Parameter(Mandatory=$true)][string]$Source, [Parameter(Mandatory=$true)][string]$Destination, [Parameter(Mandatory=$true)][string]$Helper)
 $ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-# The archive contains the complete companion at its root, ready to extract to a folder.
-[System.IO.Compression.ZipFile]::CreateFromDirectory($Source, $Destination, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+# The helper is compiled from tools/native/ZipRelease.cs by the release builder.
+& $Helper $Source $Destination
+if ($LASTEXITCODE -ne 0) { throw 'Release archive helper failed.' }

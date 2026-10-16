@@ -89,3 +89,17 @@ test('display modes are explicit and saved app geometry remains bounded',()=>{
  const bounds=policy.ranchPlacement({x:99999,y:99999,width:99999,height:99999},{x:-1280,y:0,width:1280,height:720});
  assert.deepEqual(bounds,{x:-1280,y:0,width:1280,height:720});
 });
+
+test('expanded panel size persists independently of the compact rail and stays on screen',()=>{
+ const area={x:-1920,y:0,width:1920,height:1040};
+ const size={width:900,height:800},anchor={x:-120,y:100};
+ assert.deepEqual(policy.preferences({panelSize:size}).panelSize,size);
+ assert.deepEqual(policy.placement(anchor,area,true,'short',size),{x:-924,y:100,width:900,height:800,side:'left'});
+ assert.equal(policy.placement(anchor,area,false,'short',size).width,96);
+ assert.equal(policy.placement(anchor,area,true,'long',size).height,1040);
+ const small=policy.placement(anchor,{x:0,y:0,width:400,height:450},true,'short',size);
+ assert.equal(small.width,400);assert.equal(small.height,450);
+ assert.deepEqual(policy.preferences({panelSize:{width:-1,height:Infinity}}).panelSize,undefined);
+ assert.deepEqual(policy.windowRequest('resize',size),{action:'resize',value:size});
+ for(const value of [{width:Infinity,height:800},{width:900,height:0},{width:900,height:800,url:'bad'}])assert.throws(()=>policy.windowRequest('resize',value));
+});

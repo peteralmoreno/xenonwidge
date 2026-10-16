@@ -14,12 +14,12 @@ function clampAnchor(anchor, area) {
   };
 }
 
-function placement(anchor, area, expanded, length = 'short') {
+function placement(anchor, area, expanded, length = 'short', panelSize = EXPANDED) {
   const pos = clampAnchor(anchor, area);
   const leftSpace = pos.x - area.x;
   const rightSpace = area.x + area.width - pos.x - COLLAPSED.width;
   const side = rightSpace >= leftSpace ? 'right' : 'left';
-  const size = expanded ? EXPANDED : COLLAPSED;
+  const size = expanded ? {width:clamp(panelSize.width || EXPANDED.width,500,2400),height:clamp(panelSize.height || EXPANDED.height,480,2400)} : COLLAPSED;
   const width = Math.min(size.width, area.width);
   const height = length === 'long' ? area.height : Math.min(size.height, area.height);
   const x = expanded && side === 'left' ? pos.x - (width - COLLAPSED.width) : pos.x;
@@ -55,9 +55,9 @@ function actionRequest(name, body) {
   if (name === 'ring-all' && objectWithKeys(body, [])) return {route:'/admin/profile/ring-all',body:{}};
   if (['session','focus','clean'].includes(name) && objectWithKeys(body,['id']) && validId(body.id)) return name==='clean'?{route:'/admin/profile/clean',body}:{route:'/admin/action',body:{id:body.id,action:name==='session'?'resume':'focus'}};
   if (name==='membership' && objectWithKeys(body,['id','active','expectedRevision']) && validId(body.id) && typeof body.active==='boolean' && revision(body.expectedRevision)) return {route:'/admin/membership',body};
-  if (name==='factory' && fields(body,['nickname','folder','role','color'],['design','personality','contextPolicy','instructionsPath','autoPickup','readOnly']) && typeof body.nickname==='string' && body.nickname.trim() && body.nickname.length<=32 && typeof body.folder==='string' && validId(body.role) && Number.isInteger(body.color) && body.color>=0 && body.color<16) return {route:'/admin/profile',body:{...body,active:false}};
+  if (name==='factory' && fields(body,['nickname','folder','role','color'],['design','personality','contextPolicy','instructionsPath','autoPickup','readOnly']) && typeof body.nickname==='string' && body.nickname.trim() && body.nickname.length<=32 && typeof body.folder==='string' && validId(body.role) && Number.isInteger(body.color) && body.color>=0 && body.color<32) return {route:'/admin/profile',body:{...body,active:false}};
   if (name==='queue' && objectWithKeys(body,['id','profileId','beforeTaskId','expectedRevision','expectedQueueRevision']) && validId(body.id) && (body.profileId===null||validId(body.profileId)) && (body.beforeTaskId===null||validId(body.beforeTaskId)) && revision(body.expectedRevision) && revision(body.expectedQueueRevision)) return {route:'/admin/task/queue',body};
-  if (name==='task-save' && fields(body,['title','instructions','projectFolder','expectedRevision'],['id','acceptanceCriteria','reasoningRequest','modelEligibility','humanReview','family','releasedForPickup','dependsOn','stickyMode']) && (body.id===undefined||validId(body.id)) && revision(body.expectedRevision) && typeof body.title==='string' && body.title.length<=120 && typeof body.instructions==='string' && body.instructions.length<=12000 && typeof body.projectFolder==='string' && (body.stickyMode===undefined||['inherit','on','off'].includes(body.stickyMode))) return {route:'/admin/task',body};
+  if (name==='task-save' && fields(body,['title','instructions','projectFolder','expectedRevision'],['id','acceptanceCriteria','reasoningRequest','modelEligibility','humanReview','family','releasedForPickup','dependsOn','stickyMode','pipeOnly']) && (body.id===undefined||validId(body.id)) && revision(body.expectedRevision) && typeof body.title==='string' && body.title.length<=120 && typeof body.instructions==='string' && body.instructions.length<=12000 && typeof body.projectFolder==='string' && (body.pipeOnly===undefined||typeof body.pipeOnly==='boolean') && (body.humanReview===undefined||typeof body.humanReview==='boolean') && (body.stickyMode===undefined||['inherit','on','off'].includes(body.stickyMode))) return {route:'/admin/task',body};
   if (name==='task-start' && objectWithKeys(body,['taskId','profileId','expectedRevision']) && validId(body.taskId) && validId(body.profileId) && revision(body.expectedRevision)) return {route:'/admin/task/start',body};
   if (name==='task-sticky' && objectWithKeys(body,['id','expectedRevision','stickyMode']) && validId(body.id) && revision(body.expectedRevision) && ['inherit','on','off'].includes(body.stickyMode)) return {route:'/admin/task/sticky',body};
   if (name==='family-sticky' && fields(body,['taskId','expectedRevision','sticky'],['clearPreference']) && validId(body.taskId) && revision(body.expectedRevision) && (typeof body.sticky==='boolean'||body.sticky===null) && (body.clearPreference===undefined||typeof body.clearPreference==='boolean')) return {route:'/admin/family/sticky',body};
@@ -75,6 +75,7 @@ function pageUrl(page, taskId, {origin, adminKey, pairingKey}) {
   throw Error('Unsupported page.');
 }
 function windowRequest(action, value) {
+  if (action === 'resize' && objectWithKeys(value,['width','height']) && [value.width,value.height].every(n=>Number.isFinite(n)&&n>0&&n<=10000)) return {action,value:{width:Math.round(value.width),height:Math.round(value.height)}};
   if (action === 'length' && ['short','long'].includes(value)) return {action,value};
   if (action === 'mode' && ['icue', 'app'].includes(value)) return {action, value};
   if (['info', 'hide', 'reset'].includes(action) && value === undefined) return {action};
@@ -86,6 +87,7 @@ function utilityKind(value){if(value==='recovery'||value==='ai-sync')return valu
 function preferences(value) {
   const result = {pinned: typeof value?.pinned === 'boolean' ? value.pinned : true, mode: value?.mode === 'app' ? 'app' : 'icue', length:value?.length==='long'?'long':'short'};
   if (Number.isFinite(value?.x) && Number.isFinite(value?.y)) Object.assign(result, {x: Math.round(value.x), y: Math.round(value.y)});
+  if (value?.panelSize && [value.panelSize.width,value.panelSize.height].every(n=>Number.isFinite(n)&&n>0)) result.panelSize={width:clamp(value.panelSize.width,500,2400),height:clamp(value.panelSize.height,480,2400)};
   if (value?.ranchBounds && ['x','y','width','height'].every(k=>Number.isFinite(value.ranchBounds[k]))) result.ranchBounds = Object.fromEntries(['x','y','width','height'].map(k=>[k,Math.round(value.ranchBounds[k])]));
   return result;
 }

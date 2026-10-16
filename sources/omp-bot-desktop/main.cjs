@@ -98,9 +98,9 @@ async function boot() {
   catch { saved = {pinned: true}; }
   let pinned = saved.pinned;
   let mode = saved.mode || 'icue', length = saved.length || 'short', ranchBounds = saved.ranchBounds, ranchWindow, companionWindows;
-  let anchor = {x: saved.x, y: saved.y};
-  const info = () => ({expanded, pinned, side, mode, length, ...versionInfo(app.getAppPath())});
-  const preferences = () => ({...anchor,pinned,mode,length,...(ranchBounds?{ranchBounds}:{})});
+  let anchor = {x: saved.x, y: saved.y}, panelSize = saved.panelSize || {...policy.EXPANDED};
+  const info = () => ({expanded, pinned, side, mode, length, panelSize, ...versionInfo(app.getAppPath())});
+  const preferences = () => ({...anchor,pinned,mode,length,panelSize,...(ranchBounds?{ranchBounds}:{})});
   function save() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
@@ -114,7 +114,7 @@ async function boot() {
   }
   function place(area = areaFor()) {
     anchor = policy.clampAnchor(anchor, area);
-    const bounds = policy.placement(anchor, area, expanded, length);
+    const bounds = policy.placement(anchor, area, expanded, length, panelSize);
     side = bounds.side;
     const {x, y, width, height} = bounds;
     win.setBounds({x, y, width, height}, false);
@@ -249,6 +249,11 @@ async function boot() {
     if(command.action==='mode')return setMode(command.value);
     if(command.action==='length'){length=command.value;place();updateTray();}
     if (command.action === 'expand') { expanded = value; place(); }
+    if (command.action === 'resize' && expanded) {
+      const area=areaFor();
+      panelSize=policy.preferences({panelSize:{width:Math.min(command.value.width,area.width),height:length==='long'?panelSize.height:Math.min(command.value.height,area.height)}}).panelSize;
+      place();
+    }
     if (command.action === 'pin') pin(value);
     if (command.action === 'hide') hide();
     if (command.action === 'reset') reset();

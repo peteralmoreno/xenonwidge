@@ -51,6 +51,23 @@ test('sidebar opens task details and authors locally; full Board is optional', a
  expect(await page.evaluate(()=>window.dockCalls.find(c=>c.name==='task-save').body)).toMatchObject({title:'New sidebar work',expectedRevision:7,projectFolder:'D:/Bots',releasedForPickup:false});
 });
 
+test('panel resizing supports keyboard and pointer without opening the full Board',async({page})=>{
+ await setup(page);
+ const handle=page.getByRole('button',{name:/Resize panel/});
+ await handle.focus();await page.keyboard.press('ArrowRight');
+ expect(await page.evaluate(()=>window.dockCalls)).toEqual(expect.arrayContaining([{action:'resize',value:{width:540,height:560}}]));
+ await page.setViewportSize({width:900,height:800});
+ const box=await handle.boundingBox();
+ await page.mouse.move(box.x+10,box.y+10);await page.mouse.down();
+ await page.mouse.move(box.x-90,box.y-50);await page.mouse.up();
+ expect(await page.evaluate(()=>window.dockCalls)).toEqual(expect.arrayContaining([{action:'resize',value:{width:1000,height:740}}]));
+ expect(await page.evaluate(()=>window.dockCalls.filter(c=>c.page))).toEqual([]);
+ await page.getByRole('button',{name:/Review the renderer/}).click();
+ await expect(page.getByRole('heading',{name:'Review the renderer'})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:'artifacts/omp-bot/desktop-panel-wide.png'});
+});
+
 test('sidebar distinguishes running and installed versions and never claims stale companion data is live', async ({page})=>{
  await setup(page);
  await page.evaluate(()=>{

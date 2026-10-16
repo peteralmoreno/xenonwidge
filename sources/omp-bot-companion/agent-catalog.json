@@ -21,8 +21,8 @@
     "operate": { "method": "POST", "path": "/admin/ai/operate", "access": "operate", "actions": ["release", "start", "ring"] }
   },
   "operations": [
-    { "type": "task.create", "required": ["type", "title", "projectFolder", "instructions"], "optional": ["acceptanceCriteria", "reasoningRequest", "modelEligibility", "humanReview", "family", "dependsOn", "assignedProfileId", "stickyMode"], "effect": "Creates a pending todo draft with releasedForPickup=false and no runtime attempt." },
-    { "type": "task.update", "required": ["type", "id", "expectedRevision", "changes"], "changes": ["title", "instructions", "acceptanceCriteria", "reasoningRequest", "modelEligibility", "humanReview", "family", "dependsOn", "stickyMode"], "effect": "Edits pending task metadata only. Status, release, attempt, result, and archive fields are forbidden." },
+    { "type": "task.create", "required": ["type", "title", "projectFolder", "instructions"], "optional": ["acceptanceCriteria", "reasoningRequest", "modelEligibility", "humanReview", "pipeOnly", "family", "dependsOn", "assignedProfileId", "stickyMode"], "effect": "Creates a pending todo draft with releasedForPickup=false and no runtime attempt." },
+    { "type": "task.update", "required": ["type", "id", "expectedRevision", "changes"], "changes": ["title", "instructions", "acceptanceCriteria", "reasoningRequest", "modelEligibility", "humanReview", "pipeOnly", "family", "dependsOn", "stickyMode"], "effect": "Edits pending task metadata only. Status, release, attempt, result, and archive fields are forbidden." },
     { "type": "task.assign", "required": ["type", "id", "expectedRevision", "profileId"], "effect": "Assigns a pending task to a saved profile or the shared queue (null)." },
     { "type": "task.order", "required": ["type", "id", "expectedRevision", "beforeTaskId"], "effect": "Moves a pending task before another pending task in the same assignment lane; null means the end." },
     { "type": "family.setting", "required": ["type", "key", "sticky"], "keyFormat": "JSON string [normalized family name, canonical project path]", "effect": "Changes one normalized family preference for one project." }

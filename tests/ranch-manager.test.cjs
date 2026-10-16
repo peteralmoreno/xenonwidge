@@ -1,10 +1,10 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-test('sixteen colors keep stable resident slots and previews stay out of saved settings',async()=>{
+test('thirty-two colors keep stable resident slots and previews stay out of saved settings',async()=>{
  const {RanchManager}=await import('../sources/omp-bot-companion/manager.mjs');const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ranch-colors-'));
  const m=new RanchManager({dir,native:{}});const a=m.saveProfile({nickname:'Rose',folder:dir,color:4});const b=m.saveProfile({nickname:'Blue',folder:dir,color:8});
  assert.equal(a.slot,0);assert.equal(b.slot,1);m.saveProfile({...a,color:11,expectedRevision:a.revision});assert.equal(m.residents()[0].slot,0);assert.equal(m.residents()[0].color,11);
  assert.throws(()=>m.saveProfile({nickname:'Duplicate',folder:dir,color:11}),/color/i);
- assert.throws(()=>m.saveProfile({nickname:'Invalid',folder:dir,color:16}),/color/i);
+ assert.throws(()=>m.saveProfile({nickname:'Invalid',folder:dir,color:32}),/color/i);
  assert.equal(new RanchManager({dir,native:{}}).profiles[0].slot,0);
  m.runs[a.id]={launchId:'test',pid:123,started:'638000000000000000'};
  m.observe({id:'session',profileId:a.id,launchId:'test',terminal:{pid:123,started:'638000000000000000'},state:'ready',label:'Ready',preview:{role:'assistant',text:'Preview stays in memory',at:Date.now()}});

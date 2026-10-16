@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { familyKey } from './pickup-policy.mjs';
 
 const ACTIVE = new Set(['dispatching','awaiting-runtime','claimed','running','unresolved']);
-const TASK_FIELDS = new Set(['title','instructions','acceptanceCriteria','reasoningRequest','modelEligibility','humanReview','family','dependsOn','stickyMode']);
+const TASK_FIELDS = new Set(['title','instructions','acceptanceCriteria','reasoningRequest','modelEligibility','humanReview','pipeOnly','family','dependsOn','stickyMode']);
 const PALETTE = new Set(['mint','cyan','lavender','rose','amber','lime']);
 const MAX_OPERATIONS = 200;
 const MAX_BYTES = 128 * 1024;
@@ -93,19 +93,20 @@ export function previewChanges({ snapshot, changeSetId, actor, operations, expec
   for (const operation of operations) {
     if (!object(operation) || typeof operation.type !== 'string') fail('Every operation must have a supported type.');
     if (operation.type === 'task.create') {
-      if (!exactKeys(operation, ['type','title','projectFolder','instructions'], ['acceptanceCriteria','reasoningRequest','modelEligibility','humanReview','family','dependsOn','assignedProfileId','stickyMode'])) fail('Unsupported task.create fields.');
+      if (!exactKeys(operation, ['type','title','projectFolder','instructions'], ['acceptanceCriteria','reasoningRequest','modelEligibility','humanReview','pipeOnly','family','dependsOn','assignedProfileId','stickyMode'])) fail('Unsupported task.create fields.');
       const title = cleanText(operation.title, 'Task title', 120, true).trim();
       const instructions = cleanText(operation.instructions, 'Task instructions', 12000);
       const acceptanceCriteria = cleanText(operation.acceptanceCriteria ?? '', 'Acceptance criteria', 4000);
       const reasoningRequest = operation.reasoningRequest ?? 'auto'; if (!['auto','low','medium','high'].includes(reasoningRequest)) fail('Choose a supported reasoning request.');
       const modelEligibility = operation.modelEligibility ?? []; if (!Array.isArray(modelEligibility) || modelEligibility.some(model => !['gpt','deepseek','claude'].includes(model))) fail('Choose only supported model families.');
+      const pipeOnly = operation.pipeOnly === undefined ? false : operation.pipeOnly; if (typeof pipeOnly !== 'boolean') fail('Pipe-only must be true or false.');
       const humanReview = operation.humanReview ?? false; if (typeof humanReview !== 'boolean') fail('Human review must be true or false.');
       const family = operation.family === undefined ? null : validateFamily(operation.family);
       const assignedProfileId = operation.assignedProfileId ?? null;
       if (assignedProfileId !== null && !profiles.some(profile => profile.id === assignedProfileId)) fail('Choose a saved bot profile.');
       const id = idFactory(); if (staged.tasks.some(task => task.id === id)) fail('Could not allocate a unique task ID.');
       const projectFolder = canonicalProject(operation.projectFolder), dependencies = operation.dependsOn ?? [];
-      const task = { id, revision: 0, createdAt: now(), updatedAt: now(), queueOrder: nextOrder(staged.tasks, assignedProfileId), dependsOn: [], title, projectFolder, instructions, acceptanceCriteria, status: 'todo', assignedProfileId, releasedForPickup: false, reasoningRequest, modelEligibility: [...modelEligibility], humanReview, family, archived: false, attempts: [], resultSummary: '', evidence: [], ...(operation.stickyMode === undefined ? {} : { stickyMode: operation.stickyMode }) };
+      const task = { id, revision: 0, createdAt: now(), updatedAt: now(), queueOrder: nextOrder(staged.tasks, assignedProfileId), dependsOn: [], title, projectFolder, instructions, acceptanceCriteria, status: 'todo', assignedProfileId, releasedForPickup: false, reasoningRequest, modelEligibility: [...modelEligibility], humanReview, pipeOnly, family, archived: false, attempts: [], resultSummary: '', evidence: [], ...(operation.stickyMode === undefined ? {} : { stickyMode: operation.stickyMode }) };
       if (operation.stickyMode !== undefined && !['inherit','on','off'].includes(operation.stickyMode)) fail('Sticky mode must be inherit, on, or off.');
       task.dependsOn = validateDeps(id, dependencies, [...staged.tasks, task]);
       if (family && staged.tasks.some(item => item.family?.name.toLocaleLowerCase() === family.name.toLocaleLowerCase() && item.family.color !== family.color)) fail('Tasks with the same family name must use one shared color.');
@@ -121,6 +122,7 @@ export function previewChanges({ snapshot, changeSetId, actor, operations, expec
       if (Object.hasOwn(changes, 'acceptanceCriteria')) task.acceptanceCriteria = cleanText(changes.acceptanceCriteria, 'Acceptance criteria', 4000);
       if (Object.hasOwn(changes, 'reasoningRequest')) { if (!['auto','low','medium','high'].includes(changes.reasoningRequest)) fail('Choose a supported reasoning request.'); task.reasoningRequest = changes.reasoningRequest; }
       if (Object.hasOwn(changes, 'modelEligibility')) { if (!Array.isArray(changes.modelEligibility) || changes.modelEligibility.some(model => !['gpt','deepseek','claude'].includes(model))) fail('Choose only supported model families.'); task.modelEligibility = [...changes.modelEligibility]; }
+      if (Object.hasOwn(changes, 'pipeOnly')) { if (typeof changes.pipeOnly !== 'boolean') fail('Pipe-only must be true or false.'); task.pipeOnly = changes.pipeOnly; }
       if (Object.hasOwn(changes, 'humanReview')) { if (typeof changes.humanReview !== 'boolean') fail('Human review must be true or false.'); task.humanReview = changes.humanReview; }
       if (Object.hasOwn(changes, 'family')) task.family = validateFamily(changes.family);
       if (Object.hasOwn(changes, 'dependsOn')) task.dependsOn = validateDeps(task.id, changes.dependsOn, staged.tasks);

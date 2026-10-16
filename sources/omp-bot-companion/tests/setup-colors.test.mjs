@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-test('setup offers sixteen named swatches, reserves used colors and omits obsolete login checks', async () => {
+test('setup offers thirty-two named swatches, reserves used colors and omits obsolete login checks', async () => {
   const nodes = new Map();
   const make = () => ({value:'',children:[],dataset:{},style:{setProperty(){}},append(...children){this.children.push(...children);},replaceChildren(){this.children=[];},setAttribute(){},showModal(){this.open=true;},close(){this.open=false;},click(){return this.onclick();}});
   const get = id => {if(!nodes.has(id)) nodes.set(id,make());return nodes.get(id);};
@@ -13,14 +13,15 @@ test('setup offers sixteen named swatches, reserves used colors and omits obsole
   await new Promise(resolve=>setImmediate(resolve));
   get('add').click();
   const choices=get('color-options').children;
-  assert.equal(choices.length,16);
+  assert.equal(choices.length,32);
   assert.equal(get('color').value,'1');
   assert.equal(choices[0].children[0].disabled,true);
   assert.equal(choices[1].children[0].checked,true);
   assert.equal(choices[11].children[2].textContent,'Red');
-  assert.equal(new Set(choices.map(choice=>choice.children[1].style.backgroundColor)).size,16);
-  choices[11].children[0].onchange();
-  assert.equal(get('color').value,'11');
+  assert.equal(new Set(choices.map(choice=>choice.children[1].style.backgroundColor)).size,32);
+  choices[31].children[0].onchange();
+  assert.equal(get('color').value,'31');
+  assert.equal(choices[31].children[2].textContent,'Jet');
   assert.equal(get('check-list').children.length,1);
   assert.match(get('check-list').children[0].textContent,/Node/);
   get('cards').children[0].children[0].children[1].click();

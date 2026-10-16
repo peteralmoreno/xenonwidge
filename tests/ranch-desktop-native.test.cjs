@@ -81,6 +81,11 @@ test('isolated hidden desktop keeps its bridge secure, resizes natively and leav
     near(expandedBounds.height, Math.min(560, initial.area.height));
     assert.ok(expandedBounds.x >= initial.area.x && expandedBounds.x + expandedBounds.width <= initial.area.x + initial.area.width);
     assert.ok(expandedBounds.y >= initial.area.y && expandedBounds.y + expandedBounds.height <= initial.area.y + initial.area.height);
+    const resized=await page.evaluate(()=>window.botRanch.window('resize',{width:900,height:800}));
+    const resizedBounds=await application.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].getBounds());
+    near(resizedBounds.width,Math.min(900,initial.area.width));
+    near(resizedBounds.height,Math.min(800,initial.area.height));
+    assert.equal(resized.panelSize.width,Math.max(500,Math.min(900,initial.area.width)));
     await page.evaluate(() => window.botRanch.window('expand', false));
     const collapsedBounds = await application.evaluate(({BrowserWindow}) => BrowserWindow.getAllWindows()[0].getBounds());
     for (const key of ['x', 'y', 'width', 'height']) near(collapsedBounds[key], initial.bounds[key]);
@@ -166,6 +171,7 @@ test('isolated hidden desktop keeps its bridge secure, resizes natively and leav
     assert.equal((await response.json()).profiles[0].activityBusy, true);
     assert.equal(requests.filter(url => url === '/admin/shutdown').length, 2);
     const saved = JSON.parse(fs.readFileSync(path.join(temporary, 'desktop-data/window.json'), 'utf8'));
+    assert.equal(saved.panelSize.width,resized.panelSize.width);
     assert.equal(saved.mode,'app');assert.equal(saved.pinned,false);assert.ok(saved.ranchBounds.width>=680);
     // The saved B mode reopens a Ranch window on the next launch with the same store.
     application=await electron.launch(launchOptions);

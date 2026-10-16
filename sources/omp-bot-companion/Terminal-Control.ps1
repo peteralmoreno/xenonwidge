@@ -1,11 +1,12 @@
-param([ValidateSet('status','close')][string]$Action,[int]$TerminalPid,[string]$Started,[ValidateSet('terminal','launcher')][string]$Kind='terminal')
+param([ValidateSet('status','close','probe')][string]$Action,[int]$TerminalPid,[string]$Started,[ValidateSet('terminal','launcher')][string]$Kind='terminal')
 $ErrorActionPreference = 'Stop'
 try {
-    $terminalProcess = Get-Process -Id $TerminalPid -ErrorAction SilentlyContinue
-    $expectedName = if ($Kind -eq 'launcher') { 'powershell' } else { 'mintty' }
-    if (-not $terminalProcess -or $terminalProcess.ProcessName -ne $expectedName -or $terminalProcess.StartTime.ToUniversalTime().Ticks.ToString() -ne $Started) { Write-Output 'closed'; exit }
-    if ($Action -eq 'status') { Write-Output 'live'; exit }
-    if ($Kind -ne 'terminal') { Write-Output 'unavailable'; exit }
-    if (-not $terminalProcess.CloseMainWindow()) { Write-Output 'attention'; exit }
-    if ($terminalProcess.WaitForExit(5000)) { Write-Output 'closed' } else { Write-Output 'attention' }
-} catch { Write-Output 'unavailable' }
+    $helper = Join-Path $PSScriptRoot 'bin\Terminal-Control.exe'
+    if (-not (Test-Path -LiteralPath $helper)) { throw 'Native helper missing. From the source checkout run: node tools/build-native.cjs' }
+    if ($Action -eq 'probe') { & $helper probe } else { & $helper $Action $Kind $TerminalPid $Started }
+    exit $LASTEXITCODE
+} catch {
+    Write-Error -Message $_.Exception.Message -ErrorAction Continue
+    Write-Output 'unavailable'
+    exit 1
+}

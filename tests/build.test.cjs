@@ -16,6 +16,8 @@ test('release staging includes complete source UI and excludes private or genera
     fs.writeFileSync(path.join(companion, 'sessions/private.json'), 'PRIVATE');
     const output = path.join(temporary, 'output');
     stageRanch(source, output);
+    assert.equal(require('node:child_process').spawnSync(path.join(output,'bin/Terminal-Control.exe'),['probe'],{encoding:'utf8',windowsHide:true}).stdout.trim(),'ready:1');
+    assert.ok(JSON.parse(fs.readFileSync(path.join(output,'release.json'))).files.includes('bin/Terminal-Control.exe'));
     for (const file of ['pairing-key.txt', 'admin-key.txt', 'ranch.json', 'ranch-updates.json', '.env', 'unexpected.mjs', 'sessions']) assert.equal(fs.existsSync(path.join(output, file)), false, file);
     for (const file of ['pipeline.mjs','pipeline-manager.mjs','updates.mjs']) assert.ok(fs.statSync(path.join(output,file)).isFile(),file);
     for (const file of ['guides/bot-ranch-loop.md','guides/bot-ranch-pipeline.md']) assert.ok(fs.statSync(path.join(output,file)).isFile(),file);
@@ -26,6 +28,8 @@ test('release staging includes complete source UI and excludes private or genera
     stageRanch(source, second);
     const files = fs.readdirSync(output, { recursive: true }).filter(f => fs.statSync(path.join(output, f)).isFile()).sort();
     assert.deepEqual(files, fs.readdirSync(second, { recursive: true }).filter(f => fs.statSync(path.join(second, f)).isFile()).sort());
-    for (const file of files) assert.deepEqual(fs.readFileSync(path.join(output, file)), fs.readFileSync(path.join(second, file)));
+    // Framework csc embeds compilation timestamps/MVIDs; compare executable readiness.
+    for (const file of files.filter(f=>!f.endsWith('.exe'))) assert.deepEqual(fs.readFileSync(path.join(output, file)), fs.readFileSync(path.join(second, file)));
+    assert.equal(require('node:child_process').spawnSync(path.join(second,'bin/Terminal-Control.exe'),['probe'],{encoding:'utf8',windowsHide:true}).stdout.trim(),'ready:1');
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 });

@@ -1,6 +1,8 @@
 # Pipeline bots and public updates
 
-Bot Ranch 0.13.0 includes an optional pipes-and-valves **Pipeline design** and a **Pipeline role**. Choose them independently in the bot profile editor. A role describes behavior; a task's **Pipeline API monitor** execution mode actually starts and watches an external job.
+Bot Ranch includes a valve-and-gauge **Pipeline design** and a **Pipeline role**. Choose them independently in the bot profile editor. A role describes behavior; a task's **Pipeline API monitor** execution mode actually starts and watches an external job.
+
+**Pipe-only** in the Board or sidebar task editor restricts both automatic pickup and manual Start to bots whose role ID is `pipe` or `pipeline`. It is separate from API monitoring: ordinary agent tasks can also be restricted to those roles. The flag survives edits and follow-ups, and AI Sync supports it on task creation and updates. Choosing the Pipeline appearance alone does not make a bot eligible. Release, dependencies, workspace locks and model checks still apply.
 
 ## Configure an external-job task
 

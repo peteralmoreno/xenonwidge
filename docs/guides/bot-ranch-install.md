@@ -1,6 +1,6 @@
 # Bot Ranch install on a new Windows PC
 
-This guide installs the current Bot Ranch widget and central companion from a fresh Windows PC. The current source manifest is **0.17.1**. Use the widget package and companion ZIP with the same version; do not mix packages from different releases.
+This guide installs the current Bot Ranch widget and central companion from a fresh Windows PC. The current source manifest is **0.18.0**. Use the widget package and companion ZIP with the same version; do not mix packages from different releases.
 
 For a prebuilt release, start at [Install the release](#install-the-release). To build the packages from this repository, follow the complete guide.
 
@@ -53,7 +53,7 @@ npm run build:ranch
 Confirm the matching Bot Ranch outputs exist:
 
 ```powershell
-$version = '0.17.1'
+$version = '0.18.0'
 Test-Path "artifacts\releases\bot-ranch\bot-ranch-$version.icuewidget"
 Test-Path "artifacts\releases\bot-ranch\bot-ranch-companion-$version.zip"
 ```
@@ -66,7 +66,7 @@ The expanded panel shows **App** (the running desktop) and **Companion** version
 
 For an upgrade, first use the existing tray menu's **Quit dock** or **Quit desktop app** so the new executable can open. This leaves bot work running. Finish active work before reopening a release that needs to update the companion; its startup guard will refuse to replace a busy companion.
 
-1. Extract the **entire** matching `bot-ranch-companion-0.17.1.zip` to a writable temporary folder. Do not run the installer from inside the ZIP and do not remove files from the extracted package.
+1. Extract the **entire** matching `bot-ranch-companion-0.18.0.zip` to a writable temporary folder. Do not run the installer from inside the ZIP and do not remove files from the extracted package.
 2. Run `Install botRanch.cmd` once.
 3. Approve the normal Windows script prompt if one appears. The installer copies the release to `%LOCALAPPDATA%\Programs\botRanch` and creates a **botRanch** Start menu shortcut.
 4. Open **botRanch** from the Start menu. The stable launcher opens the floating desktop dock and starts or reuses the companion. Click the robot mark to expand the sidebar. Use **Board**, **Bots** or **Factory** there; **Full Board** and **Settings** open separate windows.
@@ -96,7 +96,7 @@ The active ranch supports up to six profiles. Additional saved profiles remain i
 
 This section is for **mode A**. Mode B uses the standalone Ranch window and requires no iCUE import or manual key entry.
 
-1. In iCUE, open the widget section and import `artifacts\releases\bot-ranch\bot-ranch-0.17.1.icuewidget`.
+1. In iCUE, open the widget section and import `artifacts\releases\bot-ranch\bot-ranch-0.18.0.icuewidget`.
 2. Place the widget in a **Large** slot. The integrated Tasks view is designed for the Large layout; the separate Ranch Desk widget is not required.
 3. In iCUE, allow `127.0.0.1:43822` under **Settings > Software Settings > Widget Access**.
 4. Open the imported widget's **Connect** dialog and paste the connection key from the companion's **Settings > Connection** page.
@@ -141,3 +141,11 @@ If someone supplied the matching widget and companion packages, a repository che
 - **The widget is missing or too small:** re-import the `.icuewidget` and place it in a Large slot. Ranch Desk is a compatibility package, not a prerequisite for integrated Bot Ranch.
 
 For build details, package paths, and verification boundaries, see [Build, install, and verify](build-and-import.md). For runtime behavior, see the [Bot Ranch README](../../sources/omp-bot/README.md) and [central companion README](../../sources/omp-bot-companion/README.md).
+
+## Managed Windows terminals
+
+Version 0.18.0 compiles the terminal window helper from checked-in C# source during packaging. Launcher and window-control scripts avoid dynamic PowerShell type compilation so they can run in Constrained Language Mode. Settings checks whether the packaged helper can execute. Enterprise application-control policy may still require an administrator to allow the unsigned helper; botRanch does not change that policy.
+
+For development directly from a source checkout, run `node tools/build-native.cjs` once before opening managed bot terminals. Packaged installations already include the compiled helper and require no extra script. Rebuilding uses the Windows .NET Framework compiler; its executable timestamps and module IDs mean separate builds are not byte-identical.
+
+Opening a terminal retains the bot color and folder. Raising an existing terminal brings it forward without deliberately moving keyboard focus away from your current application. Close and raise validate the recorded process identity before acting. A task handoff waits briefly for normal OMP shutdown, then stops only its owned child if OMP remains stuck; it never starts a replacement before the old child exits.
