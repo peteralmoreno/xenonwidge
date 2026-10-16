@@ -103,3 +103,10 @@ test('expanded panel size persists independently of the compact rail and stays o
  assert.deepEqual(policy.windowRequest('resize',size),{action:'resize',value:size});
  for(const value of [{width:Infinity,height:800},{width:900,height:0},{width:900,height:800,url:'bad'}])assert.throws(()=>policy.windowRequest('resize',value));
 });
+
+test('Factory edits require an existing ID and revision without changing Ranch membership',()=>{
+ const body={id:'bot',expectedRevision:7,nickname:'Piper',folder:'D:/Bots',role:'pipeline',color:31,design:'pm',readOnly:true};
+ assert.deepEqual(policy.actionRequest('profile-save',body),{route:'/admin/profile',body});
+ for(const invalid of [{...body,id:''},{...body,expectedRevision:undefined},{...body,active:false},{...body,color:32}])assert.throws(()=>policy.actionRequest('profile-save',invalid));
+ assert.throws(()=>policy.actionRequest('factory',body));
+});

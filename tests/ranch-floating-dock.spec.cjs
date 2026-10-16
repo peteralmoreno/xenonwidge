@@ -21,7 +21,7 @@ async function setup(page) {
     };
     window.botRanch = {
       state: async () => { window.dockReads = (window.dockReads || 0) + 1; if (window.dockHold) return new Promise(resolve => window.dockResolve = resolve); if (window.dockOffline === 'payload') return { offline: true, error: window.dockSafeError || 'Unavailable' }; if (window.dockOffline) throw Error('Internal exception details'); return window.dockData; },
-      action: async (name, body) => { window.dockCalls.push({ name, body }); return { result: window.dockActionResult }; },
+      action: async (name, body) => { window.dockCalls.push({ name, body }); return window.dockActionError?{error:window.dockActionError}:{ result: window.dockActionResult }; },
       openPage: async (page, taskId) => { window.dockCalls.push({ page, taskId }); },
       window: async (action, value) => { window.dockCalls.push({ action, value }); if (action === 'expand') window.dockInfo.expanded = value; if (action === 'pin') window.dockInfo.pinned = value; if(action==='mode')window.dockInfo.mode=value; if(action==='length')window.dockInfo.length=value; return window.dockInfo; }
     };
@@ -66,6 +66,46 @@ test('panel resizing supports keyboard and pointer without opening the full Boar
  await expect(page.getByRole('heading',{name:'Review the renderer'})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.screenshot({path:'artifacts/omp-bot/desktop-panel-wide.png'});
+});
+
+test('Factory edits saved bots, keeps drafts across polling and preserves the original revision',async({page})=>{
+ await setup(page);
+ await page.evaluate(()=>{Object.assign(window.dockData.profiles[0],{folder:'D:/Bots/Brick',role:'pipeline',design:'pm',color:31,readOnly:true,autoPickup:false,contextPolicy:'per-session',personality:'curious',instructionsPath:'D:/Bots/roles/brick.md'});Object.assign(window.dockData.profiles[1],{active:false,folder:'D:/Bots/Piper'});});
+ await page.getByRole('button',{name:'Factory',exact:true}).click();
+ await page.getByRole('button',{name:'Edit bot',exact:true}).click();
+ await expect(page.getByLabel('Bot name',{exact:true})).toHaveValue('Brick');
+ await expect(page.getByRole('combobox',{name:'Design',exact:true})).toHaveValue('pm');
+ await expect(page.getByLabel('Read only',{exact:true})).toBeChecked();
+ await page.getByLabel('Bot name',{exact:true}).fill('Brick revised');
+ await page.evaluate(()=>{window.dockData.profiles[0].revision=2;window.dockData.profiles[0].nickname='Changed elsewhere';});
+ await expect(page.getByLabel('Bot to edit')).toContainText('Changed elsewhere');
+ await expect(page.getByLabel('Bot name',{exact:true})).toHaveValue('Brick revised');
+ await page.evaluate(()=>window.dockActionError='Conflict: bot profile changed in another view. Reload it before saving.');
+ await page.getByRole('button',{name:'Save bot',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('Conflict');
+ await expect(page.getByLabel('Bot name',{exact:true})).toHaveValue('Brick revised');
+ const body=await page.evaluate(()=>window.dockCalls.find(c=>c.name==='profile-save').body);
+ expect(body).toMatchObject({id:'p1',expectedRevision:1,nickname:'Brick revised',folder:'D:/Bots/Brick',role:'pipeline',design:'pm',color:31,readOnly:true,autoPickup:false,contextPolicy:'per-session',personality:'curious',instructionsPath:'D:/Bots/roles/brick.md'});
+ expect(body).not.toHaveProperty('active');
+ await page.getByRole('button',{name:'Reload saved profile',exact:true}).click();
+ await expect(page.getByLabel('Bot name',{exact:true})).toHaveValue('Changed elsewhere');
+ await page.evaluate(()=>{window.dockActionError=null;window.dockActionResult={...window.dockData.profiles[0],revision:3};});
+ await page.getByRole('button',{name:'Save bot',exact:true}).click();
+ await expect(page.getByRole('alert')).toHaveCount(0);
+ expect(await page.evaluate(()=>window.dockCalls.filter(c=>c.name==='profile-save').at(-1).body.expectedRevision)).toBe(2);
+ await page.getByRole('button',{name:'Save bot',exact:true}).click();
+ expect(await page.evaluate(()=>window.dockCalls.filter(c=>c.name==='profile-save').at(-1).body.expectedRevision)).toBe(3);
+ await page.getByLabel('Bot to edit').selectOption('p2');
+ await expect(page.getByLabel('Bot name',{exact:true})).toHaveValue('Piper');
+ await expect(page.getByLabel('Bot to edit')).toContainText('Piper / Bank');
+ await page.getByRole('button',{name:'Save bot',exact:true}).click();
+ expect(await page.evaluate(()=>window.dockCalls.filter(c=>c.name==='profile-save').at(-1).body)).toMatchObject({id:'p2',expectedRevision:1,folder:'D:/Bots/Piper'});
+ await page.setViewportSize({width:750,height:900});
+ await page.getByLabel('Bot to edit').scrollIntoViewIfNeeded();
+ await page.screenshot({path:'artifacts/omp-bot/factory-edit.png'});
+ await page.getByRole('button',{name:'New bot',exact:true}).click();
+ await expect(page.getByLabel('Bot name',{exact:true})).toHaveValue('');
+ await expect(page.getByRole('button',{name:'Create in Bank',exact:true})).toBeVisible();
 });
 
 test('sidebar distinguishes running and installed versions and never claims stale companion data is live', async ({page})=>{
