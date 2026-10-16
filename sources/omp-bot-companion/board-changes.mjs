@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { familyKey } from './pickup-policy.mjs';
+import {normalizeFamily,ensureFamilies,validateContextRefs,sourceReport,updateFamilyPresentation} from './task-context.mjs';
 
 const ACTIVE = new Set(['dispatching','awaiting-runtime','claimed','running','unresolved']);
 const TASK_FIELDS = new Set(['title','instructions','acceptanceCriteria','reasoningRequest','modelEligibility','humanReview','pipeOnly','family','dependsOn','stickyMode']);
@@ -19,7 +20,7 @@ function exactKeys(value, required, optional = []) {
 function clone(value) { return structuredClone(value); }
 function safeTask(task) {
   const projected = clone(task);
-  projected.attempts = (projected.attempts || []).map(({ dispatchTokenHash, roleInstructions, ...attempt }) => attempt);
+  projected.attempts = (projected.attempts || []).map(({ dispatchTokenHash, roleInstructions, taskInput, contextSnapshot, claimClientId, ...attempt }) => attempt);
   return projected;
 }
 function cleanText(value, name, max, required = false) {
@@ -31,8 +32,8 @@ function taskHasActiveWork(task) {
 }
 function validateFamily(family) {
   if (family === null) return null;
-  if (!object(family) || Object.keys(family).some(key => !['name','color'].includes(key)) || typeof family.name !== 'string' || !family.name.trim() || family.name.trim().length > 40 || !PALETTE.has(family.color)) fail('Family needs a name of 1–40 characters and a supported color.');
-  return { name: family.name.trim(), color: family.color };
+  if (!object(family) || Object.keys(family).some(key => !['id','name','color'].includes(key)) || typeof family.name !== 'string' || !family.name.trim() || family.name.trim().length > 40 || !PALETTE.has(family.color)) fail('Family needs a name of 1–40 characters and a supported color.');
+  return { ...(family.id?{id:family.id}:{}), name: family.name.trim(), color: family.color };
 }
 function canonicalProject(folder) {
   if (typeof folder !== 'string' || !path.isAbsolute(folder)) fail('Choose an existing absolute project workspace.');
@@ -62,6 +63,7 @@ function publicPlanState(snapshot) {
     taskRevision: snapshot.taskRevision,
     tasks: (snapshot.tasks || []).map(safeTask),
     familyPolicies: clone(snapshot.familyPolicies || {}),
+    contextFamilies: clone(snapshot.contextFamilies || {}),
   };
 }
 function validateBase({ snapshot, changeSetId, actor, operations, expectedTaskRevision }) {
@@ -85,7 +87,8 @@ function nextOrder(tasks, profileId) { return Math.max(-1, ...tasks.filter(task 
  */
 export function previewChanges({ snapshot, changeSetId, actor, operations, expectedTaskRevision, now = Date.now, idFactory = randomUUID }) {
   validateBase({ snapshot, changeSetId, actor, operations, expectedTaskRevision });
-  const internalBefore = { taskRevision: snapshot.taskRevision, tasks: clone(snapshot.tasks || []), familyPolicies: clone(snapshot.familyPolicies || {}) };
+  const internalBefore = { taskRevision: snapshot.taskRevision, tasks: clone(snapshot.tasks || []), familyPolicies: clone(snapshot.familyPolicies || {}), contextFamilies: clone(snapshot.contextFamilies || {}) };
+  ensureFamilies(internalBefore.tasks,internalBefore.contextFamilies);
   const before = publicPlanState(internalBefore), staged = clone(internalBefore), original = clone(internalBefore);
   const profiles = snapshot.profiles;
   const taskChanges = new Set();
@@ -109,7 +112,8 @@ export function previewChanges({ snapshot, changeSetId, actor, operations, expec
       const task = { id, revision: 0, createdAt: now(), updatedAt: now(), queueOrder: nextOrder(staged.tasks, assignedProfileId), dependsOn: [], title, projectFolder, instructions, acceptanceCriteria, status: 'todo', assignedProfileId, releasedForPickup: false, reasoningRequest, modelEligibility: [...modelEligibility], humanReview, pipeOnly, family, archived: false, attempts: [], resultSummary: '', evidence: [], ...(operation.stickyMode === undefined ? {} : { stickyMode: operation.stickyMode }) };
       if (operation.stickyMode !== undefined && !['inherit','on','off'].includes(operation.stickyMode)) fail('Sticky mode must be inherit, on, or off.');
       task.dependsOn = validateDeps(id, dependencies, [...staged.tasks, task]);
-      if (family && staged.tasks.some(item => item.family?.name.toLocaleLowerCase() === family.name.toLocaleLowerCase() && item.family.color !== family.color)) fail('Tasks with the same family name must use one shared color.');
+      task.family=normalizeFamily(family,projectFolder,staged.tasks);
+      for(const id of updateFamilyPresentation(task.family,projectFolder,staged.tasks,staged.contextFamilies)){taskChanges.add(id);staged.tasks.find(item=>item.id===id).updatedAt=now();}
       staged.tasks.push(task); taskChanges.add(id); touched.add(id); continue;
     }
     if (operation.type === 'task.update') {
@@ -124,11 +128,11 @@ export function previewChanges({ snapshot, changeSetId, actor, operations, expec
       if (Object.hasOwn(changes, 'modelEligibility')) { if (!Array.isArray(changes.modelEligibility) || changes.modelEligibility.some(model => !['gpt','deepseek','claude'].includes(model))) fail('Choose only supported model families.'); task.modelEligibility = [...changes.modelEligibility]; }
       if (Object.hasOwn(changes, 'pipeOnly')) { if (typeof changes.pipeOnly !== 'boolean') fail('Pipe-only must be true or false.'); task.pipeOnly = changes.pipeOnly; }
       if (Object.hasOwn(changes, 'humanReview')) { if (typeof changes.humanReview !== 'boolean') fail('Human review must be true or false.'); task.humanReview = changes.humanReview; }
-      if (Object.hasOwn(changes, 'family')) task.family = validateFamily(changes.family);
+      if (Object.hasOwn(changes, 'family')) {task.family = normalizeFamily(validateFamily(changes.family),task.projectFolder,staged.tasks);for(const id of updateFamilyPresentation(task.family,task.projectFolder,staged.tasks,staged.contextFamilies)){taskChanges.add(id);staged.tasks.find(item=>item.id===id).updatedAt=now();}}
       if (Object.hasOwn(changes, 'dependsOn')) task.dependsOn = validateDeps(task.id, changes.dependsOn, staged.tasks);
       if (Object.hasOwn(changes, 'stickyMode')) { if (!['inherit','on','off'].includes(changes.stickyMode)) fail('Sticky mode must be inherit, on, or off.'); task.stickyMode = changes.stickyMode; }
       if (task.releasedForPickup && !task.instructions.trim()) fail('Add instructions before releasing work.');
-      if (task.family && staged.tasks.some(item => item.id !== task.id && item.family?.name.toLocaleLowerCase() === task.family.name.toLocaleLowerCase() && item.family.color !== task.family.color)) fail('Tasks with the same family name must use one shared color.');
+
       task.updatedAt = now(); taskChanges.add(task.id); touched.add(task.id); continue;
     }
     if (operation.type === 'task.assign') {
@@ -147,12 +151,36 @@ export function previewChanges({ snapshot, changeSetId, actor, operations, expec
       if (beforeIndex < 0) fail('Queue target must be a pending task in the same assignment lane.');
       lane.splice(beforeIndex, 0, task); lane.forEach((item, index) => { if (item.queueOrder !== index) { item.queueOrder = index; item.updatedAt = now(); taskChanges.add(item.id); touched.add(item.id); } }); continue;
     }
+    if (operation.type === 'task.attachContext') {
+      if(!exactKeys(operation,['type','id','expectedRevision','references']))fail('Unsupported task.attachContext fields.');
+      const task=getTask(staged.tasks,operation.id);activeTaskOrThrow(task);revisionForTask(getTask(original.tasks,operation.id),operation.expectedRevision);
+      task.contextRefs=validateContextRefs(operation.references,task,staged.tasks);task.updatedAt=now();taskChanges.add(task.id);continue;
+    }
+    if(['family.preferBot','family.clearPreference','family.publishHandover','family.resetHandover'].includes(operation.type)){
+      const extra=operation.type==='family.preferBot'?['profileId']:operation.type==='family.publishHandover'?['summary','sources']:[];
+      if(!exactKeys(operation,['type','familyId','expectedRevision',...extra]))fail('Unsupported family operation fields.');
+      ensureFamilies(staged.tasks,staged.contextFamilies);
+      const entry=Object.entries(staged.contextFamilies).find(([,f])=>f.id===operation.familyId);if(!entry)fail('Unknown family.');const [key,family]=entry;
+      if(!Number.isSafeInteger(operation.expectedRevision)||operation.expectedRevision!==family.revision)fail('Family revision changed.','conflict');
+      if(operation.type==='family.preferBot'){
+        if(!profiles.some(p=>p.id===operation.profileId))fail('Choose a saved bot profile.');
+        staged.familyPolicies[key]={...(staged.familyPolicies[key]||{sticky:true}),preferredProfileId:operation.profileId,preferenceAt:now()};family.revision++;
+      }else if(operation.type==='family.clearPreference'){
+        staged.familyPolicies[key]={...(staged.familyPolicies[key]||{sticky:true}),preferredProfileId:null,preferenceAt:now()};family.revision++;
+      }else{
+        const summary=operation.type==='family.resetHandover'?'':cleanText(operation.summary,'Handover summary',4000,true);
+        const references=operation.type==='family.resetHandover'?[]:validateContextRefs(operation.sources,{projectFolder:family.projectFolder},staged.tasks);
+        family.handovers.push({revision:++family.revision,summary,author:actor,at:now(),kind:operation.type==='family.resetHandover'?'reset':'explicit-report',sources:references.map(ref=>({...sourceReport(getTask(staged.tasks,ref.taskId)),allowCrossProject:ref.allowCrossProject}))});
+      }
+      for(const task of staged.tasks.filter(t=>familyKey(t)===key&&!taskHasActiveWork(t))){taskChanges.add(task.id);task.updatedAt=now();}
+      continue;
+    }
     if (operation.type === 'family.setting') {
       if (!exactKeys(operation, ['type','key','sticky'])) fail('Unsupported family.setting fields.');
       if (typeof operation.key !== 'string' || !operation.key.trim() || operation.key.length > 512 || typeof operation.sticky !== 'boolean') fail('Family setting needs a valid key and boolean sticky value.');
       let pair;
       try { pair = JSON.parse(operation.key); } catch { fail('Family setting key must be the canonical family/project key.'); }
-      if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== 'string' || !pair[0] || typeof pair[1] !== 'string' || !pair[1] || familyKey({ family: { name: pair[0] }, projectFolder: pair[1] }) !== operation.key) fail('Family setting key must be the canonical family/project key.');
+      if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== 'string' || !pair[0] || typeof pair[1] !== 'string' || !pair[1] || (familyKey({ family: { name: pair[0] }, projectFolder: pair[1] }) !== operation.key && !staged.tasks.some(t=>familyKey(t)===operation.key))) fail('Family setting key must be the canonical family/project key.');
       staged.familyPolicies[operation.key] = { ...(staged.familyPolicies[operation.key] || {}), sticky: operation.sticky };
       if (JSON.stringify(staged.familyPolicies[operation.key]) !== JSON.stringify(original.familyPolicies[operation.key])) {
         const anchor = staged.tasks.find(task => familyKey(task) === operation.key);
@@ -162,14 +190,15 @@ export function previewChanges({ snapshot, changeSetId, actor, operations, expec
     }
     fail('Unsupported operation type.');
   }
-  if (!taskChanges.size && JSON.stringify(staged.familyPolicies) === JSON.stringify(original.familyPolicies)) fail('The change set contains no changes.');
+  if (!taskChanges.size && JSON.stringify(staged.familyPolicies) === JSON.stringify(original.familyPolicies) && JSON.stringify(staged.contextFamilies)===JSON.stringify(original.contextFamilies)) fail('The change set contains no changes.');
   for (const task of staged.tasks) {
     for (const dependency of task.dependsOn || []) if (!staged.tasks.some(item => item.id === dependency)) fail('Every dependency must refer to an existing task.');
     if (taskChanges.has(task.id)) task.evidence = [...(task.evidence || [])];
   }
   let revision = snapshot.taskRevision;
   for (const task of staged.tasks) if (taskChanges.has(task.id)) { task.revision = ++revision; task.updatedAt = task.updatedAt || now(); }
-  if (revision === snapshot.taskRevision && JSON.stringify(staged.familyPolicies) !== JSON.stringify(original.familyPolicies)) revision++;
+  ensureFamilies(staged.tasks,staged.contextFamilies);
+  if (revision === snapshot.taskRevision && (JSON.stringify(staged.familyPolicies) !== JSON.stringify(original.familyPolicies)||JSON.stringify(staged.contextFamilies)!==JSON.stringify(original.contextFamilies))) revision++;
   staged.taskRevision = revision;
   const changed = staged.tasks.filter(task => taskChanges.has(task.id));
   const beforeTasks = original.tasks.filter(task => taskChanges.has(task.id));
@@ -177,7 +206,7 @@ export function previewChanges({ snapshot, changeSetId, actor, operations, expec
     id: changeSetId, actor: actor.trim().replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 80),
     expectedTaskRevision, createdAt: now(), operations: clone(operations),
     before: { ...before, tasks: beforeTasks.map(safeTask) }, after: { ...publicPlanState(staged), tasks: changed.map(safeTask) }, conflicts: [],
-    stagedTasks: staged.tasks, stagedFamilyPolicies: staged.familyPolicies, stagedTaskRevision: staged.taskRevision,
+    stagedContextFamilies:staged.contextFamilies, stagedTasks: staged.tasks, stagedFamilyPolicies: staged.familyPolicies, stagedTaskRevision: staged.taskRevision,
   };
 }
 
@@ -201,7 +230,7 @@ export async function applyChanges({ snapshot, preview, expectedTaskRevision, ai
   });
   if (JSON.stringify(preview.before.familyPolicies || {}) !== JSON.stringify(preview.after.familyPolicies || {})) changedFields.push({ familyPolicies: Object.keys(preview.after.familyPolicies || {}) });
   const auditEntry = { changeSetId: preview.id, receiptId: receipt.receiptId, actor: preview.actor, at: appliedAt, changedFields, before: clone(preview.before), after: clone(preview.after), operations: clone(preview.operations) };
-  const nextState = { ...clone(state), familyPolicies: clone(preview.stagedFamilyPolicies), audit: [...(state.audit || []), auditEntry].slice(-100), receipts: { ...receipts, [preview.id]: receipt } };
+  const nextState = { ...clone(state), contextFamilies:clone(preview.stagedContextFamilies||{}), familyPolicies: clone(preview.stagedFamilyPolicies), audit: [...(state.audit || []), auditEntry].slice(-100), receipts: { ...receipts, [preview.id]: receipt } };
   // The persistence callback must atomically write tasks, revision, audit and receipt before changing live memory.
   const persisted = await persistTransaction({ tasks: clone(preview.stagedTasks), taskRevision: preview.stagedTaskRevision, familyPolicies: clone(preview.stagedFamilyPolicies), aiState: nextState });
   if (Array.isArray(persisted?.exportWarnings)) receipt.exportWarnings = persisted.exportWarnings.map(String).slice(0, 20);

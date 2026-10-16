@@ -1,6 +1,8 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const p=require('../sources/omp-bot-desktop/window-policy.cjs');
 test('sidebar capabilities permit explicit revisioned operations without arbitrary admin access',()=>{
+ assert.equal(p.actionRequest('wake-sleeping',{}).route,'/admin/profiles/wake');
+ assert.throws(()=>p.actionRequest('wake-sleeping',{force:true}));
  assert.equal(p.actionRequest('ring-all',{}).route,'/admin/profile/ring-all');
  assert.deepEqual(p.actionRequest('session',{id:'bot'}),{route:'/admin/action',body:{id:'bot',action:'resume'}});
  assert.equal(p.actionRequest('membership',{id:'bot',active:false,expectedRevision:4}).route,'/admin/membership');

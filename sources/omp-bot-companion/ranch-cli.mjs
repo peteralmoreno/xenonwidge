@@ -7,7 +7,7 @@ import { readPmSkill } from './pm-skill.mjs';
 import { validateOperateRequest } from './agent-api.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const usage = 'Usage: botRanch-cli.cmd skill|status|catalog|board|history|access [--json] | preview --file changes.json --actor label | apply --id CHANGESET_ID | operate --file action.json | release TASK_ID --revision N | start TASK_ID PROFILE_ID --revision N | ring';
+const usage = 'Usage: botRanch-cli.cmd skill|status|catalog|board|history|access [--json] | preview --file changes.json --actor label | apply --id CHANGESET_ID | operate --file action.json | release TASK_ID --revision N | start TASK_ID PROFILE_ID --revision N | context --file request.json | family --id FAMILY_ID | ring | wake';
 const validKey = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 
 function argumentsOf(argv) {
@@ -79,6 +79,16 @@ export async function runCli(argv = process.argv.slice(2), { env = process.env, 
       if (positional.length || Object.keys(options).some(key => key !== 'json')) throw Error(usage);
       emit(await request(credentials, 'GET', '/admin/ai/' + command, undefined, fetchImpl)); return 0;
     }
+    if(command==='family'){
+      if(positional.length||!options.id||Object.keys(options).some(key=>key!=='id'))throw Error(usage);
+      emit(await request(credentials,'POST','/admin/ai/family',{familyId:options.id},fetchImpl));return 0;
+    }
+    if(command==='context'){
+      if(positional.length||!options.file||Object.keys(options).some(key=>key!=='file'))throw Error(usage);
+      const body=JSON.parse(fs.readFileSync(options.file,'utf8'));
+      if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(key=>!['taskId','expectedTaskRevision','profileId'].includes(key))||typeof body.taskId!=='string'||!Number.isSafeInteger(body.expectedTaskRevision))throw Error('Context request requires taskId, expectedTaskRevision and optional profileId.');
+      emit(await request(credentials,'POST','/admin/ai/context',body,fetchImpl));return 0;
+    }
     if (command === 'operate') {
       if (positional.length || !options.file || Object.keys(options).some(key => key !== 'file')) throw Error(usage);
       let action;
@@ -119,9 +129,9 @@ export async function runCli(argv = process.argv.slice(2), { env = process.env, 
       if (positional.length !== 2 || !options.revision || Object.keys(options).some(key => key !== 'revision') || !/^(0|[1-9]\d*)$/.test(options.revision)) throw Error(usage);
       emit(await request(credentials, 'POST', '/admin/ai/operate', validateOperateRequest({ action: 'start', taskId: positional[0], profileId: positional[1], expectedRevision: Number(options.revision) }), fetchImpl)); return 0;
     }
-    if (command === 'ring') {
+    if (command === 'ring'||command==='wake') {
       if (positional.length || Object.keys(options).length) throw Error(usage);
-      emit(await request(credentials, 'POST', '/admin/ai/operate', { action: 'ring' }, fetchImpl)); return 0;
+      emit(await request(credentials, 'POST', '/admin/ai/operate', { action: command }, fetchImpl)); return 0;
     }
     throw Error(usage);
   } catch (error) { errorOutput(error?.message || 'Command failed.', streams, secrets); return 1; }

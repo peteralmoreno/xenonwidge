@@ -16,7 +16,7 @@ declare global {
     };
   }
 }
-const tabs = [{ id: 'tasks', label: 'Board', Icon: LayoutDashboard }, { id: 'bots', label: 'Bots', Icon: Bot }, { id: 'factory', label: 'Factory', Icon: Factory }, { id: 'updates', label: 'Updates', Icon: Bell }] as const;
+const tabs = [{ id: 'bots', label: 'Bots', Icon: Bot }, { id: 'tasks', label: 'Board', Icon: LayoutDashboard }, { id: 'factory', label: 'Factory', Icon: Factory }, { id: 'updates', label: 'Updates', Icon: Bell }] as const;
 type Tab = typeof tabs[number]['id'];
 const spring = { type: 'spring' as const, stiffness: 380, damping: 34 };
 function age(at: number) { const minutes = Math.max(0, Math.floor((Date.now() - at) / 60000)); return minutes < 1 ? 'Just now' : minutes < 60 ? `${minutes}m ago` : minutes < 1440 ? `${Math.floor(minutes / 60)}h ago` : `${Math.floor(minutes / 1440)}d ago`; }
@@ -31,6 +31,8 @@ export default function FloatingTaskDock() {
   const [checkedConnection, setCheckedConnection] = useState(false);
   const [offlineReason, setOfflineReason] = useState('');
   const [tab, setTab] = useState<Tab>('tasks');
+  const consumedAttention=useRef<string|null>(null);
+  const [attentionRequest,setAttentionRequest]=useState<string>();
   const [creating, setCreating] = useState(false);
   const [bankRequested,setBankRequested] = useState(false);
   const [message, setMessage] = useState('');
@@ -127,6 +129,11 @@ export default function FloatingTaskDock() {
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not open panel.'); }
     finally { setChangingWindow(false); }
   }, [changingWindow]);
+  useEffect(()=>{
+    const request=data?.uiRequest;
+    if(!request||request.view!=='attention'||consumedAttention.current===request.id||changingWindow)return;
+    consumedAttention.current=request.id;setTab('tasks');setCreating(false);setAttentionRequest(request.id);void expand(true);
+  },[data?.uiRequest,changingWindow,expand]);
   useEffect(() => {
     const escape = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape' && info.expanded) { event.preventDefault(); void expand(false); } };
     window.addEventListener('keydown', escape);
@@ -210,7 +217,7 @@ export default function FloatingTaskDock() {
         {!online&&<div className="connection-notice" role="status"><WifiOff size={14}/><span>{data?'Offline · showing last state, read-only':checkedConnection?'Offline · companion unavailable':'Starting or reconnecting to companion...'}{offlineReason&&<span className="offline-reason">{offlineReason}</span>}<button className="text-button recovery-link" onClick={()=>void openRecovery()}>Connection &amp; recovery</button></span></div>}
         <div className="pickup-row"><span><span className={`status-dot ${data?.pickupPaused===false?'running':''}`}/>Pickup {data?data.pickupPaused?'paused':'running':'unavailable'}</span><button className="text-button" aria-label={data?.pickupPaused===false?'Pause pickup':'Resume pickup'} disabled={disabled} onClick={()=>void run('pickup',{paused:!data?.pickupPaused},'Pickup updated.').catch(()=>{})}>{data?.pickupPaused===false?<Pause size={12}/>:<Play size={12}/>} {data?.pickupPaused===false?'Pause':'Resume'}</button></div>
         <div className="panel-scroll" key={tab}>
-          {tab==='tasks'&&<BoardPanel {...panelProps} creating={creating} onCreating={setCreating}/>}
+          {tab==='tasks'&&<BoardPanel attentionRequest={attentionRequest} {...panelProps} creating={creating} onCreating={setCreating}/>}
           {tab==='bots'&&<BotsPanel {...panelProps} initialBank={bankRequested} onFactory={()=>chooseTab('factory')}/>}
           {tab==='factory'&&<FactoryPanel {...panelProps} onBank={()=>{setTab('bots');setBankRequested(true);}}/>}
           {tab==='updates'&&(data?.updates.length?[...data.updates].sort((a,b)=>b.at-a.at).slice(0,30).map(update=><article className="update-row" key={update.id}><div className="update-heading"><strong>{profiles.find(p=>p.id===update.profileId)?.nickname||'Bot'}</strong><time dateTime={new Date(update.at).toISOString()}>{age(update.at)}</time></div><p>{update.text}</p>{update.taskId&&<button className="text-button" disabled={!online} onClick={()=>popout('board',update.taskId)}>View task <ArrowUpRight size={12}/></button>}</article>):<div className="empty-state"><Bell size={24}/><p>No updates yet.</p><span>Bot progress will appear here.</span></div>)}

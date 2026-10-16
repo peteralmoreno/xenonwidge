@@ -7,6 +7,14 @@ const modulePromise = import(pathToFileURL(path.resolve(__dirname, '../sources/o
 const base = { startUrl: 'https://jobs.example/start', statusUrl: 'https://jobs.example/jobs/{jobId}' };
 const response = (body, status = 200, headers = {}) => new Response(JSON.stringify(body), { status, headers });
 
+test('one-shot wake checks an exhausted job without renewing its budget and honors Retry-After', async () => {
+ const {PipelineMonitor}=await modulePromise;let now=100000,requests=0;
+ const monitor=new PipelineMonitor({now:()=>now,fetch:async()=>{requests++;return response({id:'existing',status:'running',message:'Waiting'});}});
+ const state={jobId:'existing',status:'running',deadline:90000,startedAt:0,intervalMinutes:5,sleeping:true,nextCheckAt:null,retryNotBefore:110000};
+ let next=await monitor.checkOnce(base,state);assert.equal(requests,0);assert.equal(next.sleeping,true);assert.equal(next.deadline,state.deadline);assert.equal(next.checkDeferred,true);
+ now=120000;next=await monitor.checkOnce(base,next);assert.equal(requests,1);assert.equal(next.jobId,'existing');assert.equal(next.deadline,state.deadline);assert.equal(next.sleeping,true);assert.equal(next.nextCheckAt,null);assert.equal(next.lastCheckedAt,now);
+});
+
 test('pipeline validates endpoint, credential references, body and every timing preset', async () => {
   const { validatePipeline } = await modulePromise;
   assert.deepEqual(validatePipeline(base), { ...base, body: {}, credentialEnv: '', waitMinutes: 60, intervalMinutes: 5 });

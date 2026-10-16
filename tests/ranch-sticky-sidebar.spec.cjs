@@ -8,7 +8,7 @@ test.beforeAll(async()=>{
  bundle=(await esbuild.build({entryPoints:[path.join(source,'renderer.tsx')],bundle:true,write:false,format:'iife',jsx:'automatic'})).outputFiles[0].text;
 });
 
-test('sidebar exposes sticky overrides, family reset, waiting text and preferred-bot markers',async({page})=>{
+test('sidebar explains automatic continuity with waiting text and preferred-bot markers',async({page})=>{
  await page.setViewportSize({width:500,height:560});
  await page.addInitScript(()=>{
   window.stickyCalls=[];
@@ -34,21 +34,16 @@ test('sidebar exposes sticky overrides, family reset, waiting text and preferred
  await expect(page.getByRole('heading',{name:'Polish the handoff'})).toBeVisible();
  await expect(page.getByText('Waiting for Cedar’s handoff window.')).toBeVisible();
  await expect(page.getByText(/Preferred bot: Cedar/)).toBeVisible();
- await page.getByLabel('Sticky preference').selectOption('on');
- await page.getByLabel('Family sticky default').selectOption('off');
- await page.getByRole('button',{name:'Reset family default and clear preference'}).click();
- expect(await page.evaluate(()=>window.stickyCalls)).toEqual([
-  {name:'task-sticky',body:{id:'t1',expectedRevision:4,stickyMode:'on'}},
-  {name:'family-sticky',body:{taskId:'t1',expectedRevision:4,sticky:false}},
-  {name:'family-sticky',body:{taskId:'t1',expectedRevision:4,sticky:null,clearPreference:true}},
- ]);
+ await expect(page.getByLabel('Sticky preference')).toHaveCount(0);
+ await expect(page.getByText(/Automatic continuity/)).toBeVisible();
+ expect(await page.evaluate(()=>window.stickyCalls)).toEqual([]);
  await page.getByRole('button',{name:'Back to Board'}).click();
  await page.getByRole('button',{name:'New task'}).first().click();
  await page.getByLabel('Task title',{exact:true}).fill('Sticky draft');
  await page.getByLabel('Instructions',{exact:true}).fill('Keep the sticky override.');
- await page.getByLabel('Sticky preference').selectOption('off');
+ await expect(page.getByLabel('Sticky preference')).toHaveCount(0);
  await page.getByRole('button',{name:'Save task',exact:true}).click();
- expect(await page.evaluate(()=>window.stickyCalls.at(-1))).toMatchObject({name:'task-save',body:{title:'Sticky draft',stickyMode:'off'}});
+ expect(await page.evaluate(()=>window.stickyCalls.at(-1))).toMatchObject({name:'task-save',body:{title:'Sticky draft',stickyMode:'inherit'}});
  await page.getByRole('button',{name:'Bots',exact:true}).click();
  await expect(page.getByRole('list',{name:'Cedar current and next work'})).toContainText('Current: Current work');
  await expect(page.getByRole('list',{name:'Cedar current and next work'})).toContainText('Up next: Polish the handoff');

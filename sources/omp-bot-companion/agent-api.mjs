@@ -6,7 +6,7 @@ import { readPmSkill } from './pm-skill.mjs';
 
 const catalog = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'agent-catalog.json'), 'utf8'));
 
-const routeNames = new Set(['/admin/ai/catalog','/admin/ai/skill','/admin/ai/snapshot','/admin/ai/preview','/admin/ai/apply','/admin/ai/access','/admin/ai/history','/admin/ai/operate']);
+const routeNames = new Set(['/admin/ai/catalog','/admin/ai/skill','/admin/ai/snapshot','/admin/ai/preview','/admin/ai/apply','/admin/ai/access','/admin/ai/history','/admin/ai/operate','/admin/ai/context','/admin/ai/family']);
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const statusFor = error => error?.code === 'conflict' ? 409 : error?.code === 'permission' ? 403 : 400;
 const profileFields = ['id','nickname','revision','folder','design','color','active','slot','autoPickup','preferredModel','readOnly','role','contextPolicy','personality','instructionsPath','busy','activityBusy','status','state','label','workCheckSupported','workCheckPending','lastSeen'];
@@ -15,11 +15,13 @@ const pick = (value, fields) => Object.fromEntries(fields.filter(key => Object.h
 /** Shared closed request validation for the CLI and authenticated API. */
 export function validateOperateRequest(body) {
   if (!isObject(body) || typeof body.action !== 'string' || !Object.hasOwn(catalog.operateActions, body.action)) throw Error('Unsupported operate action.');
-  const allowed = catalog.operateActions[body.action].required;
-  if (Object.keys(body).length !== allowed.length || Object.keys(body).some(key => !allowed.includes(key))) throw Error('Operate request contains unsupported or missing fields.');
-  if (body.action !== 'ring' && (typeof body.taskId !== 'string' || !body.taskId.trim() || !Number.isSafeInteger(body.expectedRevision) || body.expectedRevision < 0)) throw Error('Operate request requires a task ID and nonnegative safe integer revision.');
+  const required = catalog.operateActions[body.action].required;
+  const allowed=[...required,...(catalog.operateActions[body.action].optional||[])];
+  if (required.some(key=>!Object.hasOwn(body,key)) || Object.keys(body).some(key => !allowed.includes(key))) throw Error('Operate request contains unsupported or missing fields.');
+  if (!['ring','wake'].includes(body.action) && (typeof body.taskId !== 'string' || !body.taskId.trim() || !Number.isSafeInteger(body.expectedRevision) || body.expectedRevision < 0)) throw Error('Operate request requires a task ID and nonnegative safe integer revision.');
   if (body.action === 'start' && (typeof body.profileId !== 'string' || !body.profileId.trim())) throw Error('Start requires a saved profile ID.');
   if (body.action === 'follow-up' && (typeof body.note !== 'string' || !body.note.trim() || body.note.length > 4000)) throw Error('Add a follow-up instruction of 1–4000 characters.');
+  if(body.contextRevision!==undefined&&(typeof body.contextRevision!=='string'||!/^([a-f0-9]{64})$/.test(body.contextRevision)))throw Error('Context revision must be the preview fingerprint.');
   return structuredClone(body);
 }
 
@@ -43,13 +45,14 @@ export function createAgentApi({ manager, persistTransaction, setAccess, operate
       roles: (view.roles || []).map(role => pick(role, ['id','name','model','instructionsPath','error'])),
       updates: (view.updates || []).map(update => pick(update, ['id','profileId','taskId','text','kind','at'])),
       pickupPaused: view.pickupPaused === true,
+      contextFamilies: structuredClone(manager.aiState?.contextFamilies || {}),
       familyPolicies: structuredClone(manager.aiState?.familyPolicies || manager.familyPolicies || {}),
       access: getAccess(),
     };
   };
   const snapshot = () => {
     const result = rawSnapshot();
-    return { ...result, tasks: manager.tasks.map(task => manager.publicTask ? manager.publicTask(task) : structuredClone(task)) };
+    return { ...result, contextFamilies:Object.values(result.contextFamilies).map(({handovers,...family})=>({...family,handovers:handovers.map(({summary,sources,...h})=>({...h,sourceCount:sources?.length||0,characters:summary?.length||0}))})), tasks: manager.tasks.map(task => manager.publicTask ? manager.publicTask(task) : structuredClone(task)) };
   };
   const applyAccess = () => ({ access: getAccess(), allowed: ['inspect','organize','operate'] });
 
@@ -67,6 +70,14 @@ export function createAgentApi({ manager, persistTransaction, setAccess, operate
         return { status: 200, body: { audit: structuredClone(state.audit || []), receipts: Object.values(state.receipts || {}) } };
       }
       if (method !== 'POST' || !isObject(body)) return { status: 400, body: { error: 'Expected a JSON object.' } };
+      if(url==='/admin/ai/context'){
+        if(Object.keys(body).some(k=>!['taskId','expectedTaskRevision','profileId'].includes(k))||typeof body.taskId!=='string'||!Number.isSafeInteger(body.expectedTaskRevision))throw Error('Context preview requires taskId and expectedTaskRevision; profileId is optional.');
+        return {status:200,body:manager.previewTaskContext(body)};
+      }
+      if(url==='/admin/ai/family'){
+        if(Object.keys(body).some(k=>!['familyId'].includes(k))||typeof body.familyId!=='string')throw Error('Family inspection requires familyId only.');
+        return {status:200,body:manager.inspectFamily(body)};
+      }
       if (url === '/admin/ai/access') {
         if (typeof body.access !== 'string' || Object.keys(body).length !== 1 || !['inspect','organize','operate'].includes(body.access)) return { status: 400, body: { error: 'Choose inspect, organize, or operate.' } };
         if (typeof setAccess !== 'function') return { status: 403, body: { error: 'Access mode can only be changed in the native AI Sync window.' } };
@@ -78,7 +89,7 @@ export function createAgentApi({ manager, persistTransaction, setAccess, operate
         const plan = previewChanges({ snapshot: rawSnapshot(), changeSetId: body.changeSetId, actor: body.actor, operations: body.operations, expectedTaskRevision: body.expectedTaskRevision, now });
         if (previews.size >= 50) previews.delete(previews.keys().next().value);
         previews.set(plan.id, plan);
-        const { stagedTasks, stagedFamilyPolicies, stagedTaskRevision, ...safePlan } = plan;
+        const { stagedTasks, stagedFamilyPolicies, stagedTaskRevision, stagedContextFamilies, ...safePlan } = plan;
         return { status: 200, body: safePlan };
       }
       if (url === '/admin/ai/apply') {

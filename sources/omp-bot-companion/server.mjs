@@ -14,6 +14,7 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
  const selectionInstance=randomUUID();
  const agentApi=manager?createAgentApi({manager,persistTransaction:transaction=>manager.commitAiTransaction(transaction),setAccess:async access=>manager.setAiAccess(access),operate:async(action,body)=>{
   if(action==='ring')return manager.ringAll();
+  if(action==='wake')return manager.wakeSleeping();
   const task=manager.tasks.find(item=>item.id===body.taskId);
   if(!task||task.archived)throw Error('Unknown or archived task.');
   if(task.revision!==body.expectedRevision)throw Object.assign(Error('Conflict: task changed. Reload the Board before operating.'),{code:'conflict'});
@@ -21,7 +22,7 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
    if(task.status!=='todo')throw Error('Only pending tasks can be released or held.');
    return manager.saveTask({...task,expectedRevision:body.expectedRevision,releasedForPickup:action==='release'});
   }
-  if(action==='start')return manager.dispatchTask(body.taskId,body.profileId,body.expectedRevision);
+  if(action==='start')return manager.dispatchTask(body.taskId,body.profileId,body.expectedRevision,null,body.contextRevision);
   if(action==='archive')return manager.archiveTask(body.taskId,body.expectedRevision);
   if(action==='accept'||action==='follow-up'){
    if(manager.taskLocks.has(task.id)||task.attempts?.some(attempt=>['dispatching','awaiting-runtime','claimed','running','unresolved'].includes(attempt.state)))throw Error('Cannot review an active or unresolved task.');
@@ -40,13 +41,17 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
    if(req.method!=='POST')return reply(404,{error:'Not found'});
    try{
     let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>16384)return reply(413,{error:'Runtime request too large'});body+=chunk;}
-    const data=JSON.parse(body),authorization=String(req.headers.authorization||''),token=authorization.startsWith('Bearer ')?authorization.slice(7):'';if(req.url==='/runtime/work'){const result=await manager.pollWork(data?.profileId,data?.launchId,token,data?.idle);return result?reply(200,result):reply(401,{error:'Runtime work check rejected.'});}if(!data||typeof data.profileId!=='string'||typeof data.launchId!=='string'||typeof data.attemptId!=='string')return reply(400,{error:'Invalid runtime request.'});
-    if(req.url==='/runtime/status'){const result=manager.postTaskUpdate(data.profileId,data.launchId,data.attemptId,token,data.event);return result?reply(200,result):reply(401,{error:'Status update rejected.'});}
+    const data=JSON.parse(body),authorization=String(req.headers.authorization||''),token=authorization.startsWith('Bearer ')?authorization.slice(7):'';if(req.url==='/runtime/work'){const result=await manager.pollWork(data?.profileId,data?.launchId,token,data?.idle);return result?reply(200,result):reply(401,{error:'Runtime work check rejected.'});}
+    if(!data||typeof data.profileId!=='string'||typeof data.launchId!=='string')return reply(400,{error:'Invalid runtime request.'});
+    if(req.url==='/runtime/handoff'){const result=manager.acknowledgeRuntimeHandoff(data.profileId,data.launchId,token,data.deliveryId,data.phase);return result?reply(200,result):reply(401,{error:'Handoff acknowledgment rejected.'});}
+    if(req.url==='/runtime/status'&&!data.attemptId){const result=manager.postSessionUpdate(data.profileId,data.launchId,token,data.event);return result?reply(200,result):reply(401,{error:'Session status update rejected.'});}
+    if(typeof data.attemptId!=='string')return reply(400,{error:'Invalid runtime request.'});
+    if(req.url==='/runtime/status'){const result=manager.postTaskUpdate(data.profileId,data.launchId,data.attemptId,token,data.event,data.clientId);return result?reply(200,result):reply(401,{error:'Status update rejected.'});}
     if(req.url==='/runtime/claim'){
-     const task=manager.claimTaskRuntime(data.profileId,data.launchId,data.attemptId,token);return task?reply(200,{task}):reply(409,{error:'This task dispatch is unavailable or already claimed.'});
+     const task=manager.claimTaskRuntime(data.profileId,data.launchId,data.attemptId,token,data.clientId);return task?reply(200,{task}):reply(409,{error:'This task dispatch is unavailable or already claimed.'});
     }
     if(req.url==='/runtime/event'){
-     const ok=manager.recordTaskRuntimeEvent(data.profileId,data.launchId,data.attemptId,token,data.event);return ok?reply(200,{ok:true}):reply(409,{error:'Runtime event rejected.'});
+     const ok=manager.recordTaskRuntimeEvent(data.profileId,data.launchId,data.attemptId,token,data.event,data.clientId);return ok?reply(200,{ok:true}):reply(409,{error:'Runtime event rejected.'});
     }
     return reply(404,{error:'Not found'});
    }catch{return reply(400,{error:'Invalid runtime request.'});}
@@ -69,6 +74,8 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
     if(req.method==='GET'&&req.url==='/admin/key')return reply(200,{key});
     if(req.method==='POST'&&req.url==='/admin/control-key')return reply(200,{controlKey:manager.provisionControlKey()});
     if(req.method==='POST'&&req.url==='/admin/control-key/revoke'){manager.revokeControlKey();return reply(200,{ok:true});}
+    if(req.method==='POST'&&req.url==='/admin/ui/attention'){manager.uiRequest={id:randomUUID(),view:'attention'};return reply(200,{message:'Requested the sidebar attention view.'});}
+    if(req.method==='POST'&&req.url==='/admin/profiles/wake')return reply(200,manager.wakeSleeping());
     if(req.method!=='POST')return reply(404,{error:'Not found'});
     let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>32768)return reply(413,{error:'Request too large'});body+=chunk;}
     const data=JSON.parse(body);if(req.url==='/admin/profile/ring-all')return reply(200,manager.ringAll());if(req.url==='/admin/profile/check-work')return reply(200,manager.requestWorkCheck(data.id));if(req.url==='/admin/profile/delete')return reply(200,await manager.deleteProfile(data.id,data.expectedRevision));if(req.url==='/admin/profile/clean')return reply(200,await manager.cleanProfile(data.id));if(req.url==='/admin/library/import')return reply(200,manager.importProfiles());if(req.url==='/admin/role')return reply(200,manager.saveRole(data));if(req.url==='/admin/pickup')return reply(200,manager.setPickupPaused(data.paused));if(req.url==='/admin/task/start')return reply(200,await manager.dispatchTask(data.taskId,data.profileId,data.expectedRevision));if(req.url==='/admin/profile')return reply(200,manager.saveProfile(data));
@@ -95,6 +102,8 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
     if(req.method!=='POST')return reply(404,{error:'Not found'});
     let body='',bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>32768)return reply(413,{error:'Request too large'});body+=chunk;}
     const data=JSON.parse(body);
+    if(req.url==='/control/ui/attention'){manager.uiRequest={id:randomUUID(),view:'attention'};return reply(200,{message:'Requested the sidebar attention view.'});}
+    if(req.url==='/control/profiles/wake')return reply(200,manager.wakeSleeping());
     if(req.url==='/control/task/queue')return reply(200,manager.queueTask(data));if(req.url==='/control/task/stop')return reply(200,await manager.stopTask(data.id,data.confirmed,data.expectedAttemptId));if(req.url==='/control/task')return reply(200,manager.saveTask(data));
     if(req.url==='/control/task/archive')return reply(200,manager.archiveTask(data.id,data.expectedRevision));
     if(req.url==='/control/task/pipeline')return reply(200,await manager.pipelineAction(data));

@@ -1,10 +1,10 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');
-test('color traits set calm pixel speed independent of ranch size and cap idle turns',()=>{
- const {step,traits,paceMultiplier}=require('../sources/omp-bot/world.js');assert.equal(traits.length,16);assert.equal(paceMultiplier,1.15);
- for(let color=0;color<12;color++)for(const width of [840,1688]){
-  const bot={slot:0,color};step(bot,'idle',0,0,false,400,90,width,90);bot.target={x:80,y:80};const start={...bot.position};step(bot,'idle',50,.05,false,400,90,width,90);
-  const distance=Math.hypot((bot.position.x-start.x)*width/100,(bot.position.y-start.y)*4);assert.ok(Math.abs(distance-traits[color].speed*paceMultiplier*.05)<.001);assert.ok(distance<=2.071);
-  bot.target={...bot.position};bot.next=0;step(bot,'idle',2000,0,false,400,90,width,90);assert.ok(bot.next>=2000+60000/traits[color].turns);
+test('personality controls pixel speed independent of ranch size and identity color',()=>{
+ const {step,personalities,paceMultiplier}=require('../sources/omp-bot/world.js');assert.equal(paceMultiplier,1.725);
+ for(const [personality,trait] of Object.entries(personalities))for(const width of [840,1688])for(const color of [0,11,31]){
+  const bot={slot:0,color,personality};step(bot,'idle',0,0,false,400,90,width,90);bot.target={x:80,y:80};const start={...bot.position};step(bot,'idle',50,.05,false,400,90,width,90);
+  const distance=Math.hypot((bot.position.x-start.x)*width/100,(bot.position.y-start.y)*4);assert.ok(Math.abs(distance-trait.speed*paceMultiplier*.05)<.001);
+  bot.target={...bot.position};bot.next=0;step(bot,'idle',2000,0,false,400,90,width,90);assert.ok(bot.next>=2000+60000/trait.turns);
  }
 });
 test('map definitions own activity routes and reject missing destinations',()=>{
@@ -25,7 +25,7 @@ test('work activities change destinations immediately and attention goes to the 
  bot.session.state='writing';step(bot,'work',2,0,true,450,90,1650,90);assert.equal(bot.station,'writing');assert.ok(bot.position.y>reading.y+30);
  bot.session.state='running';step(bot,'work',3,0,true,450,90,1650,90);assert.equal(bot.hammering,true);
  bot.session.state='thinking';step(bot,'work',3.5,0,true,450,90,1650,90);assert.equal(bot.station,'workshop');assert.equal(bot.hammering,true);
- step(bot,'waiting',4,0,true,450,90,1650,90);assert.equal(bot.station,'bell');assert.ok(Math.abs(bot.position.y-50)<1);
+ step(bot,'waiting',4,0,true,450,90,1650,90);assert.equal(bot.station,'bell');assert.ok(Math.abs(bot.position.y-50)<25);assert.ok(Math.abs(bot.position.x-50)>5);
  const positions=[];for(let slot=0;slot<4;slot++){const b={slot,session:{state:'reading'}};step(b,'work',0,0,true,450,90,1650,90);positions.push(b.position.x);}assert.equal(new Set(positions).size,4);
 });
 test('Done presentation expires at three minutes without changing task state or resetting missing timestamps',()=>{
@@ -44,18 +44,27 @@ test('disconnected bots return to corner charging docks',()=>{
 test('connected sleep follows idle time, not heartbeats, and work/questions wake immediately',()=>{
  const {mode}=require('../sources/omp-bot/world.js');const bot={state:'ready',idleSince:1000,lastSeen:1000};assert.equal(mode(bot,5000,120),'idle');assert.equal(mode({...bot,lastSeen:125000},125000,120),'sleep');assert.equal(mode({...bot,state:'writing'},125000,120),'work');assert.equal(mode({...bot,state:'waiting'},125000,120),'waiting');assert.equal(mode({...bot,state:'offline'},125000,120),'offline');assert.equal(mode({...bot,state:'done',finishedAt:124000},125000,120),'idle');
 });
-test('every resident can cross the ranch and reach distant idle destinations',t=>{
- const {step,homes}=require('../sources/omp-bot/world.js');
- t.mock.method(Math,'random',()=>.99);
- for(let slot=0;slot<4;slot++){
-  const bot={slot};step(bot,'idle',0,0,false);
-  step(bot,'idle',2000,0,false);
-  assert.ok(bot.target.x>80&&bot.target.y>80,'all residents can visit the far corner');
-  const destination={...bot.target};
-  for(let time=2050;time<=40000;time+=50)step(bot,'idle',time,.05,false);
-  assert.ok(Math.hypot(bot.position.x-destination.x,bot.position.y-destination.y)<1,'finish long walks');
-  step(bot,'work',16000,0,true);assert.equal(bot.station,'workshop');
-  step(bot,'sleep',17000,0,true);assert.deepEqual(bot.position,homes[slot]);
+test('completed bot wake acknowledgment starts a fresh sleep age without changing completion provenance',()=>{
+ const {mode,present}=require('../sources/omp-bot/world.js');
+ const now=122000,done={id:'done-wake',state:'done',finishedAt:1000,idleSince:1000};
+ assert.equal(mode(done,now,120),'sleep');
+ const acknowledged={...done,idleSince:now};
+ assert.equal(mode(acknowledged,now,120),'idle');
+ assert.equal(mode(acknowledged,now+119999,120),'idle');
+ assert.equal(mode(acknowledged,now+120000,120),'sleep');
+ assert.equal(acknowledged.finishedAt,1000);
+ assert.equal(present(acknowledged,181000).state,'ready','completion display still expires from the original completion');
+ assert.equal(mode({...done,idleSince:500},now,120),'sleep','an earlier idle timestamp cannot postpone sleep');
+});
+test('curious residents visit reachable landmarks and work interrupts excursions',()=>{
+ const {step,homes,maps}=require('../sources/omp-bot/world.js');
+ for(let slot=0;slot<6;slot++){
+  const bot={slot,personality:'curious'};step(bot,'idle',0,0,false);step(bot,'idle',2000,0,false);
+  assert.ok(maps.meadow.pois[bot.visit]);const destination={...bot.target};
+  for(let time=2050;time<=18000;time+=50){step(bot,'idle',time,.05,false);if(!bot.walking)break;}
+  assert.ok(Math.hypot(bot.position.x-destination.x,bot.position.y-destination.y)<1,'finish landmark walks');
+  step(bot,'work',18001,0,true);assert.equal(bot.station,'workshop');assert.equal(bot.visit,null);
+  step(bot,'sleep',18002,0,true);assert.deepEqual(bot.position,homes[slot]);
  }
 });
 test('roaming keeps the whole bot inside resized ranch bounds',t=>{

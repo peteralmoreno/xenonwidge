@@ -3,8 +3,8 @@
   const body = document.body;
   const widget = document.querySelector('.desk') ? 'ranch-desk' : 'omp-bot';
   const storageKey = widget + '.appearance';
-  const themes = ['moss', 'sunset', 'moonlight'];
-  const maps = ['meadow', 'courtyard'];
+  const themes = ['moss', 'sunset', 'moonlight', 'crimson', 'arctic', 'orchid'];
+  const maps = ['meadow', 'courtyard', 'glasshouse', 'rooftop', 'depot'];
   let preferences = { theme: 'moss', map: 'meadow' };
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
@@ -50,6 +50,8 @@
   dialog.setAttribute('aria-labelledby', 'appearance-title');
   dialog.innerHTML = '<h2 id="appearance-title">Make it yours</h2><p>Choose the colors and setting for this widget.</p><label for="appearance-theme">Color theme</label><select id="appearance-theme"><option value="moss">Moss</option><option value="sunset">Sunset</option><option value="moonlight">Moonlight</option></select><label for="appearance-map">Map</label><select id="appearance-map"><option value="meadow">Meadow</option><option value="courtyard">Courtyard</option></select><p class="appearance-note">Changes save automatically on this widget.</p><div class="dialog-actions"><button id="appearance-close" type="button">Done</button></div>';
   body.append(dialog);
+  for (const value of themes.slice(3)) dialog.querySelector('#appearance-theme').append(new Option(value[0].toUpperCase() + value.slice(1), value));
+  for (const value of maps.slice(2)) dialog.querySelector('#appearance-map').append(new Option(value[0].toUpperCase() + value.slice(1), value));
   const theme = dialog.querySelector('#appearance-theme');
   const map = dialog.querySelector('#appearance-map');
   theme.value = preferences.theme;

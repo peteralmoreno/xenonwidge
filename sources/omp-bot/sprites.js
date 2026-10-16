@@ -25,5 +25,6 @@ window.RanchSprites=(()=>{
   }
   return result;
  }
- return {colors,svg};
+ function portrait(slot,design='classic'){return svg(slot,'ready',design).replace('class="sprite" viewBox="0 0 64 64"','class="sprite portrait" viewBox="8 2 48 47"');}
+ return {colors,svg,portrait};
 })();

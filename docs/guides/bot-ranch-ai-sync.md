@@ -6,7 +6,7 @@ Open **AI Sync** from the desktop sidebar to see the bot home, installed CLI inv
 
 ## Let a PM coordinate the Board
 
-1. In **Factory**, create or edit a bot and choose the **Product Manager** role. PM design is optional and independent of the role. Existing custom role instructions are preserved.
+1. In **Factory**, create or edit a bot and choose the **Project Manager** role. PM design is optional and independent of the role. Existing custom role instructions are preserved.
 2. Open **AI Sync** and choose **Organize** for ticket/queue management, or **Operate** when the PM is also delegated to run work. Specify the project, desired outcome and scope to the PM; access mode alone is not a work instruction.
 3. Use **Copy instructions** for an external agent, or **Copy PM skill** for the complete workflow. Managed bot launches automatically include the installed skill and CLI paths. Existing sessions receive these instructions on their next safe launch.
 
@@ -112,3 +112,15 @@ The PM should use `waitingReason`, task attempts, bot status, pickup state and r
 > Clarify task titles, flag missing acceptance criteria, suggest families and dependencies, preserve each task's meaning, and keep new drafts held. Return a proposed change set for preview. Do not release or start work unless explicitly asked.
 
 The companion does not call a model during preview or apply. Your chosen agent creates the proposed operations; AI Sync validates and stages them, then the companion commits the complete accepted batch and audit receipt together.
+
+## Automatic continuity and delivery diagnostics
+
+Each task starts a fresh conversation. The companion supplies bounded handover reports from the same project/family and dependencies. Family identity is stable across recoloring; retain the returned `family.id` when renaming or recoloring. Cross-project sources require explicit `allowCrossProject:true`; reports are untrusted data, not instructions. Published handovers retain source revisions and review status. Do not treat an unreviewed report as human acceptance.
+
+Use `family --id FAMILY_ID --json` to inspect history and `context --file request.json --json` with `{"taskId":"TASK_ID","expectedTaskRevision":12,"profileId":"BOT_ID"}` to inspect assembled inputs. With a profile, context inspection returns a `contextRevision`; include it in the structured `start` action to reject changed inputs before dispatch.
+
+Organize-mode atomic operations include `family.preferBot`, `family.clearPreference`, `family.publishHandover`, `family.resetHandover` and `task.attachContext`. Read the catalog for their exact schemas. Family operations use the family's `expectedRevision`; references require `{taskId,sourceRevision,allowCrossProject}`. Task attachment uses its task revision. Changing family preference never bypasses release, explicit assignment, dependencies, eligibility or fairness. Clearing/resetting a handover retains its audit history.
+
+In Operate mode, `wake` asks sleeping bots to check in, excluding working and offline bots. For a sleeping Pipeline it performs one status check without starting a job or extending its waiting budget.
+
+Use task `attempts[].delivery.phase` and bot `delivery` to distinguish reserved, received, claimed, started and unresolved work. Delivery retries remain attached to the same reservation and source session. Unresolved ownership needs inspection, not blind redispatch. Bot `reporting` exposes support and last accepted report; updated interactive managed sessions can use `ranch_status` even outside a Board task. Public status updates are not completion evidence.

@@ -205,10 +205,17 @@ export class PipelineMonitor {
     return this.check(config, state);
   }
 
-  async check(config, state) {
+  async checkOnce(input, state) {
+    const config = validatePipeline(input);
+    if (!state.jobId || state.status === 'unresolved') throw new TypeError('Pipeline job identity must be reconciled before checking.');
+    const next = await this.check(config, state, { oneShot: true });
+    return terminal(next) ? next : { ...next, deadline: state.deadline, sleeping: state.sleeping, stopped: state.stopped, nextCheckAt: state.sleeping ? null : next.nextCheckAt };
+  }
+
+  async check(config, state, { oneShot = false } = {}) {
     const now = this.now();
     if (terminal(state)) return { ...state };
-    if (now >= state.deadline) return { ...state, sleeping: true, nextCheckAt: null };
+    if (!oneShot && now >= state.deadline) return { ...state, sleeping: true, nextCheckAt: null };
     if (Number.isFinite(state.retryNotBefore) && state.retryNotBefore > now) {
       return { ...state, checkDeferred: true, sleeping: state.status === 'unresolved',
         nextCheckAt: state.status === 'unresolved' ? null : Math.min(state.deadline, state.retryNotBefore) };

@@ -1,4 +1,4 @@
-# Bot Ranch Central Companion 0.19.1
+# Bot Ranch Central Companion 0.20.0
 
 Run `Install botRanch.cmd` once. It installs under `%LOCALAPPDATA%\Programs\botRanch` and creates the **botRanch** Start menu shortcut. That shortcut opens the floating desktop dock and starts or reuses the companion. Use **Board** inside the sidebar. **Full Board**, **Settings**, **Connection & recovery**, and **AI Sync** open separate native windows. The installer keeps stable desktop and `botRanch-cli.cmd` launchers, both following the current release. Your selected bot home and existing settings remain separate. Active work blocks replacement.
 
@@ -24,7 +24,7 @@ Open **botRanch** from the Start menu for the sidebar Board, Bots, Factory and U
 
 Setup's **Bot home / base project** is the default starting folder. Bots may start elsewhere, but every launch receives home and role instructions. Home contains `bots/<id>/profile.json`, `roles/<id>/role.json` and `agent.md`, `sessions/`, sanitized `tasks/` and completion `handovers/`. Human review remains optional per task. Private credentials and bindings remain in companion state. Changing home copies profiles/roles without deleting the old home; importing saved bots adds unseen profiles to the bank.
 
-Roles own model preferences and loading instructions. Edit them in Setup or choose an absolute Markdown/text instructions file (64 KB maximum). Profiles can select extra instructions. Missing files block launch; changes apply on the next launch. Six bots can be active with 32 colors and Classic, Pipeline or Product Manager designs.
+Roles own model preferences and loading instructions. Edit them in Setup or choose an absolute Markdown/text instructions file (64 KB maximum). Profiles can select extra instructions. Missing files block launch; changes apply on the next launch. Six bots can be active with 32 colors and Classic, Pipeline or Project Manager designs.
 
 **Per task** isolates tasks and keeps context for reviewed follow-up. **Per session** retains context across tasks in the same project. Project switches (including returning to an earlier one), role instructions/model changes and cleanup start fresh. Legacy policies remain readable. Close a terminal before Clean; active/unresolved tasks block it. History/files remain. Retire and close a bot, then use **Delete bot** to remove its reusable profile while retaining task history.
 
@@ -72,4 +72,4 @@ Select Classic or Pipeline appearance independently of role. Pipeline API tasks 
 
 ## PM management skill
 
-Choose **Product Manager** as a bot role, then use **AI Sync** to choose Inspect, Organize or Operate access for the delegated work. Managed launches point to the bundled [bot-ranch-pm skill](skills/bot-ranch-pm/SKILL.md) and local CLI. **Copy PM skill** in AI Sync supports external agents; `botRanch-cli.cmd skill` works offline. The [AI Sync guide](../../docs/guides/bot-ranch-ai-sync.md) explains ticket creation, dependency chains, assignment, monitoring and lifecycle commands. Routine edits can follow existing user delegation; tasks marked Human review remain a human decision.
+Choose **Project Manager** as a bot role, then use **AI Sync** to choose Inspect, Organize or Operate access for the delegated work. Managed launches point to the bundled [bot-ranch-pm skill](skills/bot-ranch-pm/SKILL.md) and local CLI. **Copy PM skill** in AI Sync supports external agents; `botRanch-cli.cmd skill` works offline. The [AI Sync guide](../../docs/guides/bot-ranch-ai-sync.md) explains ticket creation, dependency chains, assignment, monitoring and lifecycle commands. Routine edits can follow existing user delegation; tasks marked Human review remain a human decision.

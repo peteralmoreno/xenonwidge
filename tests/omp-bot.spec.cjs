@@ -22,7 +22,7 @@ test('OMP bot reflects actual state, supports reduced motion, and sleeps when di
  await page.getByRole('button',{name:'Connect',exact:true}).click();
  for(const state of ['reading','researching','writing','running','waiting','done']){h.setState(state);await expect(page.locator('body')).toHaveAttribute('data-state',state);}
  h.setState('reading');await expect(page.locator('body')).toHaveAttribute('data-state','reading');await page.screenshot({path:'artifacts/omp-bot/reading-preview.png'});
- await page.getByRole('button',{name:'Pause animation'}).click();await expect(page.locator('body')).toHaveAttribute('data-motion','off');
+ await page.locator('#motion').click();await page.locator('#motion-choice').selectOption('still');await page.locator('#motion-close').click();await expect(page.locator('body')).toHaveAttribute('data-motion','still');
  for(const viewport of [{width:840,height:696},{width:696,height:840},{width:420,height:348}]){await page.setViewportSize(viewport);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);}
  h.disconnect();await expect(page.locator('body')).toHaveAttribute('data-state','offline');await expect(page.getByRole('button',{name:'Open companion view'})).toBeVisible();
 });

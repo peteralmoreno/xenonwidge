@@ -248,7 +248,7 @@ async function boot() {
     const command = policy.windowRequest(action, value);
     if(command.action==='mode')return setMode(command.value);
     if(command.action==='length'){length=command.value;place();updateTray();}
-    if (command.action === 'expand') { expanded = value; place(); }
+    if (command.action === 'expand') { expanded = value; place(); if(expanded)show(); }
     if (command.action === 'resize' && expanded) {
       const area=areaFor();
       panelSize=policy.preferences({panelSize:{width:Math.min(command.value.width,area.width),height:length==='long'?panelSize.height:Math.min(command.value.height,area.height)}}).panelSize;

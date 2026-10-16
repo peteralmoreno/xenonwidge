@@ -108,7 +108,7 @@ test('a non-sticky successful pickup clears the profile consecutive count withou
   assert.equal(result.family.consecutive,0);
 });
 
-test('manager pollWork records family affinity only after its dispatch resolves',async()=>{
+test('manager pollWork leaves family affinity unchanged until work completes',async()=>{
  const {RanchManager}=await import('../sources/omp-bot-companion/manager.mjs');
  const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{createHash}=require('node:crypto');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ranch-sticky-poll-'));
@@ -124,7 +124,7 @@ test('manager pollWork records family affinity only after its dispatch resolves'
   assert.deepEqual(await manager.pollWork('cedar',launchId,token,true),{accepted:true,wakeAcknowledged:false});
   assert.equal(dispatched[0],saved.id);
   const key=(await policy()).familyKey(saved);
-  assert.deepEqual(manager.familyAffinities[key],{profileId:'cedar',claimedAt:now,lastTaskId:saved.id,consecutive:1});
+  assert.equal(manager.familyAffinities[key],undefined);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -144,3 +144,4 @@ test('manager autoPickup leaves affinity unchanged after a failed dispatch',asyn
   assert.match(manager.tasks[0].pickupBlockReason,/Native launch failed/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+test('durable family preference outlives grace while fallback, assignment and fairness remain authoritative',async()=>{const {selectPickupTask,familyKey}=await policy(),owner=profile('owner'),other=profile('other');const related=task('related',{family:{id:'family-id',name:'Docs',color:'mint'},queueOrder:5}),older=task('older',{family:null,queueOrder:1});const key=familyKey(related),affinities={[key]:{profileId:owner.id,claimedAt:1,durable:true,consecutive:1}};const args={profile:owner,profiles:[owner,other],tasks:[related,older],runs:{owner:{status:'terminal open'},other:{status:'terminal open'}},affinities,now:90000,eligible:available};assert.equal(selectPickupTask(args).taskId,'related');assert.equal(selectPickupTask({...args,profile:other,tasks:[related]}).taskId,'related');assert.equal(selectPickupTask({...args,eligible:t=>t.id!=='related'}).taskId,'older');assert.equal(selectPickupTask({...args,tasks:[related,{...older,assignedProfileId:owner.id}]}).reason,'explicit-queue');affinities[key].consecutive=3;assert.equal(selectPickupTask(args).reason,'fairness');});

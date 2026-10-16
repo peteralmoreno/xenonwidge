@@ -9,18 +9,18 @@ test('six residents keep colors, expose overflow, and open a terminal only by ex
  await expect(page.locator('.bot')).toHaveCount(6);
  const ids=await page.locator('.bot').evaluateAll(bs=>bs.map(b=>[b.dataset.id,b.dataset.color]));
  expect(new Set(ids.map(x=>x[1])).size).toBe(6);
- await expect(page.locator('#manage')).toContainText('+1');
+ await expect(page.locator('#population')).toContainText('6 / 6 residents');await expect(page.locator('#manage')).toHaveCount(0);
  sessions.reverse();await page.waitForTimeout(850);
  expect(await page.locator('.bot').evaluateAll(bs=>bs.map(b=>[b.dataset.id,b.dataset.color]))).toEqual(ids);
  // Selection semantics should not depend on catching a roaming, overlapping target.
- await page.getByRole('button',{name:'Pause animation'}).click();
+ await page.locator('#motion').click();await page.locator('#motion-choice').selectOption('still');await page.locator('#motion-close').click();
  const selectedBot=page.locator('.bot[data-id="bot1"]');await expect(selectedBot).toHaveAttribute('data-walking','false');
  await selectedBot.dblclick();await expect(selectedBot).toHaveAttribute('aria-pressed','true');await page.waitForTimeout(500);expect(focused).toEqual([]);await page.getByRole('button',{name:'Open selected terminal'}).click();await expect.poll(()=>focused).toEqual(['bot1']);
- await page.getByRole('button',{name:'Play animation'}).click();
+ await page.locator('#motion').click();await page.locator('#motion-choice').selectOption('lively');await page.locator('#motion-close').click();
  await page.reload();await expect(page.locator('.bot')).toHaveCount(6);
  expect(await page.locator('.bot').evaluateAll(bs=>bs.map(b=>[b.dataset.id,b.dataset.color]))).toEqual(ids);
- await page.locator('#manage').click();await expect(page.locator('#management')).toContainText('Bot profiles are saved in the central companion');await page.getByRole('button',{name:'Done',exact:true}).click();
- await page.getByRole('button',{name:'Pause animation'}).click();await expect(page.locator('body')).toHaveAttribute('data-motion','off');
+ await expect(page.locator('#management')).toHaveCount(0);
+ await page.locator('#motion').click();await page.locator('#motion-choice').selectOption('still');await page.locator('#motion-close').click();await expect(page.locator('body')).toHaveAttribute('data-motion','still');
  for(const size of [{width:840,height:696},{width:696,height:840},{width:420,height:348}]){await page.setViewportSize(size);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);const boxes=await page.locator('.bot').evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};}));for(const b of boxes){expect(b.w).toBeGreaterThanOrEqual(44);expect(b.h).toBeGreaterThanOrEqual(44);expect(b.x).toBeGreaterThanOrEqual(0);expect(b.x+b.w).toBeLessThanOrEqual(size.width);}}
  for(const size of [{width:1688,height:696},{width:2547,height:676},{width:696,height:1688}]){
   await page.setViewportSize(size);
@@ -31,12 +31,12 @@ test('six residents keep colors, expose overflow, and open a terminal only by ex
    expect(b.x).toBeGreaterThanOrEqual(scene.x);expect(b.x+b.width).toBeLessThanOrEqual(scene.x+scene.width);
    expect(b.y).toBeGreaterThanOrEqual(scene.y);expect(b.y+b.height).toBeLessThanOrEqual(scene.y+scene.height);
   }
-  await expect(page.locator('#manage')).toBeInViewport();await expect(page.locator('#ranch-desk')).toBeInViewport();
+  await expect(page.locator('#needs-you')).toBeInViewport();await expect(page.locator('#ranch-desk')).toBeInViewport();
   if(size.width>size.height)await page.screenshot({path:size.width>2000?'artifacts/bot-ranch/ranch-six-xl-preview.png':'artifacts/bot-ranch/ranch-large-preview.png'});
  }
  await page.setViewportSize({width:840,height:696});await page.screenshot({path:'artifacts/bot-ranch/ranch-preview.png'});
  await page.reload();await expect(page.locator('.bot')).toHaveCount(6);
- await page.setViewportSize({width:420,height:348});expect((await page.locator('#manage').boundingBox()).height).toBeGreaterThanOrEqual(44);
+ await page.setViewportSize({width:420,height:348});expect((await page.locator('#needs-you').boundingBox()).height).toBeGreaterThanOrEqual(44);
  await page.locator('#project').click();await expect(page.getByRole('dialog',{name:'Bot details'})).toBeVisible();await expect(page.locator('#full-project')).not.toBeEmpty();
 });
 

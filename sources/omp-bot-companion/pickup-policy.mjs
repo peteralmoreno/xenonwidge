@@ -4,7 +4,7 @@ export const STICKY_GRACE_MS = 30_000;
 export const STICKY_FAIRNESS_LIMIT = 3;
 const activeAttemptStates = new Set(['dispatching','awaiting-runtime','claimed','running','unresolved']);
 
-function normalizedProject(projectFolder) {
+export function normalizedProject(projectFolder) {
   if (typeof projectFolder !== 'string' || !projectFolder.trim()) return null;
   const value = projectFolder.trim();
   // Ranch stores fs.realpathSync paths. Normalize Windows drive/UNC paths with
@@ -25,7 +25,7 @@ export function familyKey(task) {
   const project = normalizedProject(task?.projectFolder);
   if (!name || !project) return null;
   // JSON encoding prevents family names containing separators from colliding.
-  return JSON.stringify([name, project]);
+  return JSON.stringify([task.family.id || name, project]);
 }
 
 export function resolvedSticky(task, familyPolicies = {}) {
@@ -36,7 +36,7 @@ export function resolvedSticky(task, familyPolicies = {}) {
   const key = familyKey(task);
   if (!key) return false;
   const policy = familyPolicies?.[key];
-  if (policy === undefined) return false;
+  if (policy === undefined) return !!task.family?.id;
   if (!policy || typeof policy !== 'object' || typeof policy.sticky !== 'boolean') {
     throw new TypeError('Family sticky defaults must contain a boolean sticky value.');
   }
@@ -86,7 +86,7 @@ function liveAffinity(affinities, key, now) {
     || !Number.isFinite(affinity.claimedAt)
     || !Number.isFinite(now)
     || now < affinity.claimedAt
-    || now - affinity.claimedAt >= STICKY_GRACE_MS) return null;
+    || (!affinity.durable && now - affinity.claimedAt >= STICKY_GRACE_MS)) return null;
   return affinity;
 }
 
@@ -156,7 +156,7 @@ export function selectPickupTask({
     const key = familyKey(task), affinity = liveAffinity(affinities, key, now);
     if (!affinity || affinity.profileId === profile.id) continue;
     const owner = availableOwner(affinity, profilesById, runs);
-    if (owner && eligibleFor(task, owner, eligible)) deferKeys.add(key);
+    if (owner && eligibleFor(task, owner, eligible) && now - affinity.claimedAt < STICKY_GRACE_MS) deferKeys.add(key);
   }
   const available = shared.filter(task => !deferKeys.has(familyKey(task)));
   if (!available.length) return null;

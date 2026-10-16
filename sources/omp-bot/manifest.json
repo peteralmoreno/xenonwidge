@@ -3,7 +3,7 @@
   "id": "com.xeneonwidge.ompbot",
   "name": "Bot Ranch",
   "description": "Large overhead Bot Ranch with integrated local task and bot management.",
-  "version": "0.19.1",
+  "version": "0.20.0",
   "preview_icon": "resources/icon.svg",
   "min_framework_version": "1.0.0",
   "min_app_version": "5.47",

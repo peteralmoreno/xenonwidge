@@ -3,7 +3,7 @@ const {ranchOptions}=require('./ranch-window.cjs');
 const {ranchPlacement}=require('./window-policy.cjs');
 const pages=new Set(['/board/','/setup/']);
 const assets=new Set(['/setup/board.js','/setup/board.css','/setup/app.js','/setup/style.css','/setup/settings.css','/ui/sprites.js']);
-const routes=new Set(['state','checks','key','control-key','control-key/revoke','profile/check-work','profile/ring-all','profile/delete','profile/clean','library/import','role','pickup','task/start','profile','settings','action','task/queue','task/stop','task','task/archive','task/pipeline','task/retry','task/review','membership']);
+const routes=new Set(['state','checks','key','control-key','control-key/revoke','profile/check-work','profile/ring-all','profiles/wake','profile/delete','profile/clean','library/import','role','pickup','task/start','profile','settings','action','task/queue','task/stop','task','task/archive','task/pipeline','task/retry','task/review','membership']);
 function allowedRequest(value,origin){try{const u=new URL(value);return u.origin===origin&&!u.username&&!u.password&&!u.search&&(pages.has(u.pathname)||assets.has(u.pathname)||u.pathname.startsWith('/admin/')&&routes.has(u.pathname.slice(7)));}catch{return false;}}
 function allowedNavigation(value,origin){try{const u=new URL(value);return allowedRequest(value,origin)&&pages.has(u.pathname);}catch{return false;}}
 function createCompanionWindows({BrowserWindow,Menu,session,screen,appDir,hidden=false}){

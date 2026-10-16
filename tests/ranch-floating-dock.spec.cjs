@@ -85,7 +85,7 @@ test('Factory edits saved bots, keeps drafts across polling and preserves the or
  await expect(page.getByRole('alert')).toContainText('Conflict');
  await expect(page.getByLabel('Bot name',{exact:true})).toHaveValue('Brick revised');
  const body=await page.evaluate(()=>window.dockCalls.find(c=>c.name==='profile-save').body);
- expect(body).toMatchObject({id:'p1',expectedRevision:1,nickname:'Brick revised',folder:'D:/Bots/Brick',role:'pipeline',design:'pm',color:31,readOnly:true,autoPickup:false,contextPolicy:'per-session',personality:'curious',instructionsPath:'D:/Bots/roles/brick.md'});
+ expect(body).toMatchObject({id:'p1',expectedRevision:1,nickname:'Brick revised',folder:'D:/Bots/Brick',role:'pipeline',design:'pm',color:31,readOnly:true,autoPickup:false,personality:'curious',instructionsPath:'D:/Bots/roles/brick.md'});
  expect(body).not.toHaveProperty('active');
  await page.getByRole('button',{name:'Reload saved profile',exact:true}).click();
  await expect(page.getByLabel('Bot name',{exact:true})).toHaveValue('Changed elsewhere');
@@ -252,7 +252,7 @@ test('Ranch display switches A/B without sending work mutations',async({page})=>
 });
 
 
-test('Factory saves a profile to Bank; bots can start sessions and ring all',async({page})=>{
+test('Factory saves a profile to Bank; bots can start sessions and wake sleepers',async({page})=>{
  await setup(page);
  await page.getByRole('button',{name:'Factory',exact:true}).click();
  await page.getByLabel('Bot name').fill('Piper II');
@@ -264,8 +264,8 @@ test('Factory saves a profile to Bank; bots can start sessions and ring all',asy
  await expect(page.getByRole('button',{name:/Bank 0/})).toHaveAttribute('aria-pressed','true');
  await page.getByRole('button',{name:/On ranch/}).click();
  await page.getByRole('button',{name:'Open session',exact:true}).click();
- await page.getByRole('button',{name:'Ring all',exact:true}).click();
- expect(await page.evaluate(()=>window.dockCalls)).toEqual(expect.arrayContaining([{name:'session',body:{id:'p2'}},{name:'ring-all',body:{}}]));
+ await page.getByRole('button',{name:'Wake sleepers',exact:true}).click();
+ expect(await page.evaluate(()=>window.dockCalls)).toEqual(expect.arrayContaining([{name:'session',body:{id:'p2'}},{name:'wake-sleeping',body:{}}]));
 });
 
 test('long mode is independent of Ranch display and shows more Board space',async({page})=>{
@@ -315,4 +315,27 @@ test('busy bots are put away after current work and bank admission preserves rev
  await page.getByRole('button',{name:'Bring to Ranch',exact:true}).click();
  expect(await page.evaluate(()=>window.dockCalls)).toEqual(expect.arrayContaining([{name:'focus',body:{id:'p3'}},{name:'membership',body:{id:'p1',active:false,expectedRevision:1}},{name:'membership',body:{id:'p3',active:true,expectedRevision:6}}]));
  await page.screenshot({path:'artifacts/omp-bot/sidebar-bot-bank.png'});
+});
+
+test('sidebar puts Bots first and explains automatic context and personality',async({page})=>{
+ await setup(page);await expect(page.getByRole('navigation',{name:'Dock views'}).getByRole('button').first()).toHaveAccessibleName('Bots');
+ await page.getByRole('button',{name:'Factory',exact:true}).click();await expect(page.getByRole('combobox',{name:'Context',exact:true})).toHaveCount(0);await expect(page.getByText(/Each task starts fresh/)).toBeVisible();
+ await page.getByLabel('Personality',{exact:true}).selectOption('sociable');await expect(page.getByText('Visits idle neighbors without interrupting their work.')).toBeVisible();await page.getByLabel('Bot name',{exact:true}).fill('Friendly');await page.getByRole('button',{name:'Create in Bank',exact:true}).click();expect(await page.evaluate(()=>window.dockCalls.find(c=>c.name==='factory').body)).not.toHaveProperty('contextPolicy');
+});
+
+
+test('Ranch attention requests open Needs you once and show handoff diagnostics',async({page})=>{
+ await setup(page);
+ await page.evaluate(()=>{window.dockData.uiRequest={id:'one',view:'attention'};window.dockData.profiles[0].delivery={id:'d1',phase:'received'};window.dockData.profiles[0].reporting={supported:true};});
+ await expect(page.getByRole('button',{name:/Needs you/})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('button',{name:/Ship installer/})).toHaveCount(0);
+ await page.getByRole('button',{name:'Bots',exact:true}).click();
+ await expect(page.getByText('Handoff: received')).toBeVisible();
+ await expect(page.getByText('Reporting ready; no updates received.')).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>window.dockReads)).toBeGreaterThan(3);
+ await expect(page.getByRole('button',{name:'Bots',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('button',{name:'Wake sleepers',exact:true}).click();
+ expect(await page.evaluate(()=>window.dockCalls)).toContainEqual({name:'wake-sleeping',body:{}});
+ await page.evaluate(()=>{window.dockData.uiRequest={id:'two',view:'attention'};});
+ await expect(page.getByRole('button',{name:/Needs you/})).toHaveAttribute('aria-pressed','true');
 });

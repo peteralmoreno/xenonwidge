@@ -10,7 +10,7 @@ test('sticky overrides, family defaults and affinities survive authoritative ran
  try{
   const manager=new RanchManager({dir,native:{}});
   let task=manager.saveTask({title:'Docs update',projectFolder:dir,instructions:'Update the guide.',family:{name:' Docs ',color:'mint'},expectedRevision:0});
-  assert.equal(task.sticky,false);assert.equal(task.familyStickyDefault,null);
+  assert.equal(task.sticky,true);assert.equal(task.familyStickyDefault,null);
   task=manager.setFamilySticky({taskId:task.id,expectedRevision:task.revision,sticky:true});
   assert.equal(task.task.sticky,true);assert.equal(task.familyStickyDefault,true);
   task=manager.setTaskSticky({id:task.task.id,expectedRevision:task.task.revision,stickyMode:'off'});
@@ -20,7 +20,7 @@ test('sticky overrides, family defaults and affinities survive authoritative ran
   const restarted=new RanchManager({dir,native:{}}),loaded=restarted.tasks[0];
   assert.equal(loaded.stickyMode,'off');assert.equal(restarted.publicTask(loaded).familyStickyDefault,true);
   assert.equal(restarted.familyAffinities[JSON.stringify(['docs',path.resolve(dir).toLocaleLowerCase()])].consecutive,2);
-  assert.equal(JSON.parse(fs.readFileSync(restarted.file,'utf8')).schemaVersion,2);
+  assert.equal(JSON.parse(fs.readFileSync(restarted.file,'utf8')).schemaVersion,3);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -36,7 +36,7 @@ test('a failed authoritative Board write leaves live tasks, revision and policie
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
-test('the manager records sticky affinity only after successful dispatch',async()=>{
+test('the manager records durable affinity only after successful completion',async()=>{
  const {RanchManager}=await import('../sources/omp-bot-companion/manager.mjs');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ranch-sticky-dispatch-'));
  try{
@@ -51,7 +51,8 @@ test('the manager records sticky affinity only after successful dispatch',async(
   assert.equal(manager.tasks[0].attempts[0].state,'failed');
   manager.tasks[0].attempts[0].state='failed';manager.tasks[0].status='todo';manager.tasks[0].releasedForPickup=true;delete manager.tasks[0].pickupBlockReason;manager.runs[profile.id]={status:'closed'};failLaunch=false;
   await manager.autoPickup();
-  const key=JSON.stringify(['guides',path.resolve(dir).toLocaleLowerCase()]);
+  assert.equal(Object.keys(manager.familyAffinities).length,0);manager.tasks[0].attempts.at(-1).state='completed';manager.tasks[0].status='done';manager.persist();
+  const key=(await import('../sources/omp-bot-companion/pickup-policy.mjs')).familyKey(manager.tasks[0]);
   assert.equal(manager.familyAffinities[key].profileId,profile.id);
   assert.equal(manager.familyAffinities[key].lastTaskId,task.id);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
@@ -63,7 +64,7 @@ test('AI family defaults advance the Board revision and invalidate a stale previ
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ranch-sticky-revision-'));
  try{
   const manager=new RanchManager({dir,native:{}}),task=manager.saveTask({title:'Family work',projectFolder:dir,instructions:'Keep it clear.',family:{name:'Guides',color:'mint'},expectedRevision:0});
-  const key=JSON.stringify(['guides',path.resolve(dir).toLocaleLowerCase()]),snapshot={tasks:manager.tasks,profiles:[],familyPolicies:manager.familyPolicies,taskRevision:manager.taskRevision};
+  const key=(await import('../sources/omp-bot-companion/pickup-policy.mjs')).familyKey(task),snapshot={tasks:manager.tasks,profiles:[],familyPolicies:manager.familyPolicies,taskRevision:manager.taskRevision};
   const proposal={expectedTaskRevision:manager.taskRevision,actor:'test',operations:[{type:'family.setting',key,sticky:true}]};
   const preview=previewChanges({snapshot,...proposal,changeSetId:'family-setting'});
   assert.ok(preview.stagedTaskRevision>manager.taskRevision);

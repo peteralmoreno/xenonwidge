@@ -47,6 +47,13 @@ test('wake does not mutate a locked external job or bypass its Retry-After',asyn
  assert.equal(m.requestWorkCheck(p.id).status,'pending');await new Promise(r=>setImmediate(r));assert.equal(polls,0);
 });
 
+test('universal wake checks a sleeping Pipeline once without extending budget or starting another job',async()=>{
+ const {m,p,task,monitor,starts}=await fixture();await m.dispatchTask(task.id,p.id,task.revision);const live=m.tasks[0],deadline=live.pipelineRun.deadline;live.pipelineRun.sleeping=true;live.pipelineRun.nextCheckAt=null;let checks=0;
+ monitor.checkOnce=async(c,s)=>{checks++;return {...s,status:'running',message:'Still running',lastCheckedAt:100};};
+ const result=m.wakeSleeping();assert.equal(result.requested,1);await new Promise(r=>setImmediate(r));
+ assert.equal(checks,1);assert.equal(live.pipelineRun.deadline,deadline);assert.equal(live.pipelineRun.sleeping,true);assert.equal(live.pipelineRun.nextCheckAt,null);assert.equal(starts(),1);assert.equal(m.view().profiles[0].wake.status,'checked');
+});
+
 test('pending retirement waits for an external job, including idle terminal heartbeats',async()=>{
  const {m,p,task}=await fixture();await m.dispatchTask(task.id,p.id,task.revision);
  assert.equal(m.setMembership(p.id,false,p.revision).pending,true);

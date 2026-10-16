@@ -17,21 +17,23 @@ test('factory creates directly in the existing bank without consuming a slot or 
  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
 
-test('town bell reports eligible, pending and closed residents without launching or disturbing work',async()=>{
+test('town bell targets sleeping residents and preserves pending wakes without disturbing work or closed sessions',async()=>{
  const {RanchManager}=await import('../sources/omp-bot-companion/manager.mjs');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ranch-bell-'));
  try {
-  const m=new RanchManager({dir,native:{launch:()=>{throw Error('Must not launch');},close:()=>{throw Error('Must not interrupt');}}});
-  const bots=['Busy','Pending','Closed','Old'].map((nickname,color)=>m.saveProfile({nickname,color}));
+  const now=200000,m=new RanchManager({dir,now:()=>now,native:{launch:()=>{throw Error('Must not launch');},close:()=>{throw Error('Must not interrupt');}}});
+  const bots=['Busy','Pending','Closed','Old','Sleeping'].map((nickname,color)=>m.saveProfile({nickname,color}));
   m.runs[bots[0].id]={status:'connected',runtimeKeyHash:'hash',launchId:'busy'};
-  m.pulses.set(bots[0].id,{state:'writing',lastSeen:Date.now()});
-  m.runs[bots[1].id]={status:'connected',runtimeKeyHash:'hash',checkRequested:true};
+  m.pulses.set(bots[0].id,{state:'writing',lastSeen:now,idleSince:0});
+  m.runs[bots[1].id]={status:'connected',runtimeKeyHash:'hash',checkRequested:true,wake:{status:'pending',at:now,message:'Already requested.'}};
+  m.pulses.set(bots[1].id,{state:'ready',lastSeen:now,idleSince:0});
   m.runs[bots[3].id]={status:'connected'};
+  m.runs[bots[4].id]={status:'connected',runtimeKeyHash:'hash'};m.pulses.set(bots[4].id,{state:'ready',lastSeen:now,idleSince:0});
   m.saveProfile({nickname:'Bank',color:5,active:false});
   const result=m.ringAll();
-  assert.equal(result.requested,1);assert.equal(result.pending,1);assert.equal(result.skipped,2);
-  assert.equal(m.runs[bots[0].id].checkRequested,true);assert.equal(m.runs[bots[0].id].launchId,'busy');
-  assert.match(result.message,/1.*2/);
+  assert.equal(result.requested,1);assert.equal(result.pending,2);assert.equal(result.skipped,3);
+  assert.equal(m.runs[bots[0].id].checkRequested,undefined);assert.equal(m.runs[bots[0].id].launchId,'busy');assert.equal(m.runs[bots[4].id].checkRequested,true);
+  assert.equal(result.results.find(row=>row.id===bots[4].id).status,'pending');
  }
  finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

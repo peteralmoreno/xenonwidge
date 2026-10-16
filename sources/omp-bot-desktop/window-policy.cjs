@@ -52,6 +52,7 @@ function fields(body, required, optional = []) {
 function actionRequest(name, body) {
   if (name === 'poke' && objectWithKeys(body, ['id']) && validId(body.id)) return {route: '/admin/profile/check-work', body: {id: body.id}};
   if (name === 'pickup' && objectWithKeys(body, ['paused']) && typeof body.paused === 'boolean') return {route: '/admin/pickup', body: {paused: body.paused}};
+  if (name === 'wake-sleeping' && objectWithKeys(body, [])) return {route:'/admin/profiles/wake',body:{}};
   if (name === 'ring-all' && objectWithKeys(body, [])) return {route:'/admin/profile/ring-all',body:{}};
   if (['session','focus','clean'].includes(name) && objectWithKeys(body,['id']) && validId(body.id)) return name==='clean'?{route:'/admin/profile/clean',body}:{route:'/admin/action',body:{id:body.id,action:name==='session'?'resume':'focus'}};
   if (name==='membership' && objectWithKeys(body,['id','active','expectedRevision']) && validId(body.id) && typeof body.active==='boolean' && revision(body.expectedRevision)) return {route:'/admin/membership',body};

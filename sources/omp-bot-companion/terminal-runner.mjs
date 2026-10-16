@@ -49,23 +49,25 @@ export function runOmpSession(omp,args,env,file,{
    clearInterval(watcher);clearTimeout(grace);clearTimeout(deadline);
    child.removeListener('error',onError);child.removeListener('exit',onExit);
    if(error){child.unref();reject(error);}
-   else resolve({code:typeof code==='number'?code:1,handoff:handoff||readHandoff(file)});
+   else resolve({code:typeof code==='number'?code:1,handoff:readHandoff(file)});
   };
   const onError=error=>finish(error);
   const onExit=code=>finish(null,code);
   child.once('error',onError);child.once('exit',onExit);
-  watcher=setInterval(()=>{
+  const watch=()=>setInterval(()=>{
    handoff=readHandoff(file);
    if(!handoff)return;
    clearInterval(watcher);
    grace=setTimeout(()=>{
     if(settled)return;
+    const current=readHandoff(file);if(!current||current.attemptId!==handoff.attemptId||current.token!==handoff.token){handoff=null;watcher=watch();return;}
     deadline=setTimeout(()=>finish(Error('OMP child did not exit after the handoff termination deadline.')),stopTimeoutMs);
     // A successful kill request is not proof of exit. Only the exit event
     // permits a replacement session; failed or hung kills leave the file intact.
     Promise.resolve().then(()=>stopChild(child,stopTimeoutMs)).catch(onError);
    },shutdownGraceMs);
   },pollMs);
+  watcher=watch();
  });
 }
 

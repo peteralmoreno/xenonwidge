@@ -47,6 +47,13 @@ test('natural shutdown during the grace period needs no forced termination',asyn
  assert.equal(result.code,0);assert.equal(result.handoff.taskId,'next-task');
 });
 
+test('withdrawn handoff after a shutdown error never kills or replaces the source child',async t=>{
+ const f=await fixture(t);
+ const script=`${publish(f.file,f.handoff)}setTimeout(()=>require('node:fs').unlinkSync(${JSON.stringify(f.file)}),30);setTimeout(()=>process.exit(9),120);`;
+ const result=await f.runOmpSession('fixture',[],f.env,f.file,{spawnProcess:f.start(script),pollMs:5,shutdownGraceMs:70,stopChild:()=>assert.fail('withdrawn handoff must leave source child running')});
+ assert.equal(result.code,9);assert.equal(result.handoff,null);
+});
+
 test('malformed and incomplete handoffs never stop or replace a healthy child',async t=>{
  const f=await fixture(t);
  for(const value of ['{unfinished', {...f.handoff,token:'bad'}, {...f.handoff,attemptId:''}, {...f.handoff,folder:'relative'}, {...f.handoff,readOnly:'false'}, {...f.handoff,roleInstructions:42}]){

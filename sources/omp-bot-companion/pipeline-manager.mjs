@@ -23,20 +23,19 @@ export const pipelineMethods={
  pipelineResident(profile){
   const task=this.tasks.find(t=>t.assignedProfileId===profile.id&&t.pipeline&&t.pipelineRun&&t.attempts?.at(-1)?.kind==='pipeline'&&hasActiveAttempt(t));if(!task)return null;
   const job=task.pipelineRun,at=this.now(),sleeping=job.sleeping===true,state=job.status==='unresolved'?'error':sleeping?'ready':'working';
-  return {id:'ranch-'+profile.id,profileId:profile.id,project:profile.nickname,color:profile.color,design:profile.design||'classic',slot:profile.slot,role:profile.role,personality:profile.personality,managed:true,pipeline:true,state,label:job.status==='unresolved'?'External job needs reconciliation':sleeping?'Monitoring asleep; resume from task details':job.message||'Monitoring external job',startedAt:job.startedAt,finishedAt:null,lastSeen:at,idleSince:sleeping?(job.deadline||at):at,canFocus:false,metadata:{folder:task.projectFolder},autoPickup:profile.autoPickup};
+  return {id:'ranch-'+profile.id,profileId:profile.id,project:profile.nickname,color:profile.color,design:profile.design||'classic',slot:profile.slot,role:profile.role,personality:profile.personality,managed:true,pipeline:true,sleeping,state,label:job.status==='unresolved'?'External job needs reconciliation':sleeping?'Monitoring asleep; resume from task details':job.message||'Monitoring external job',startedAt:job.startedAt,finishedAt:null,lastSeen:at,idleSince:sleeping?(job.deadline||at):at,canFocus:false,metadata:{folder:task.projectFolder},autoPickup:profile.autoPickup};
  },
  requestPipelineCheck(task){
   const id=task.assignedProfileId,previous=this.pipelineWakeResults.get(id),now=this.now();
   if(previous&&now-previous.at<10000)return previous.result;
-  if(this.taskLocks.has(task.id))return {status:'pending',message:'An external-job check is already in progress.'};
-  if(task.pipelineRun.retryNotBefore>now)return {status:'pending',message:'The API asked us to wait before checking again.'};
+  if(this.taskLocks.has(task.id))return {status:'pending',requested:false,message:'An external-job check is already in progress.'};
+  if(task.pipelineRun.retryNotBefore>now)return {status:'pending',requested:false,message:'The API asked us to wait before checking again.'};
   if(!task.pipelineRun.jobId)return {status:'error',message:'Submission outcome is uncertain. Reconcile the external job before waking.'};
-  const result={status:'pending',message:task.pipelineRun.sleeping?'Waking the monitor for one hour; checking the same external job.':'Checking external job progress.'};
+  const result={status:'pending',message:task.pipelineRun.sleeping?'Checking the same external job once; its monitoring budget stays unchanged.':'Checking external job progress.'};
   this.pipelineWakeResults.set(id,{at:now,result});
   queueMicrotask(()=>{Promise.resolve().then(async()=>{
    if(this.taskLocks.has(task.id)||!hasActiveAttempt(task))throw Error('Job changed.');
-   if(task.pipelineRun.sleeping)await this.pipelineAction({id:task.id,expectedRevision:task.revision,action:'resume',minutes:60});
-   else {this.taskLocks.add(task.id);try{const next=await this.pipelineMonitor.poll(task.pipeline,{...task.pipelineRun,nextCheckAt:this.now()});applyResult(this,task,next);}finally{this.taskLocks.delete(task.id);}}
+   this.taskLocks.add(task.id);try{const state=task.pipelineRun,next=state.sleeping?await this.pipelineMonitor.checkOnce(task.pipeline,state):await this.pipelineMonitor.poll(task.pipeline,{...state,nextCheckAt:this.now()});applyResult(this,task,state.sleeping&&!['succeeded','failed'].includes(next.status)?{...next,deadline:state.deadline,sleeping:true,stopped:state.stopped,nextCheckAt:null}:next);}finally{this.taskLocks.delete(task.id);}
    const deferred=task.pipelineRun.checkDeferred===true;
    this.pipelineWakeResults.set(id,{at:now,result:{status:deferred?'pending':task.pipelineRun.lastError?'error':'checked',message:deferred?'The API asked us to wait before checking again.':task.pipelineRun.lastError||task.pipelineRun.message||('External job: '+task.pipelineRun.status)}});
   }).catch(()=>{this.pipelineWakeResults.set(id,{at:now,result:{status:'error',message:'Monitor is busy or changed. Check task details and try again.'}});});});
