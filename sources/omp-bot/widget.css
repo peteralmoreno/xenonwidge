@@ -159,8 +159,6 @@ body[data-theme=arctic]{--shell:#182932;--surface:#294552;--hover:#395e6c;--text
 body[data-theme=orchid]{--shell:#2b2035;--surface:#493456;--hover:#62466e;--text:#fff0ff;--muted:#ddc7e7;--edge:#a980b7;--ground:#8c7798;--grass-light:#ae96b7;--bed:#a38aad;--bed-edge:#6b547a;--path:#d5bed0;--path-edge:#a2859c;--stone:#b7a5c2;--stone-edge:#887594;--plaza:#e0d1e4;--label:#f5e7f7;--label-ink:#47324e;--line:#a980b7;--accent:#e1b2f4}
 .map-ground{display:none}body[data-map=glasshouse] .glasshouse-ground,body[data-map=rooftop] .rooftop-ground,body[data-map=depot] .depot-ground{display:block}
 body:is([data-map=glasshouse],[data-map=rooftop],[data-map=depot]) .meadow-ground{display:none}
-.idle-landmark{position:absolute;z-index:1;transform:translate(-50%,-85%);width:clamp(36px,4.5vw,68px);height:clamp(35px,8vh,56px);pointer-events:none;text-align:center}
-.idle-landmark[hidden]{display:none}.idle-landmark svg{display:block;width:100%;height:100%}.idle-landmark span{display:none}
 .attention-bell{position:absolute;z-index:5;display:block;padding:0;border:0;background:transparent!important;overflow:visible;min-height:44px;min-width:44px;color:var(--label-ink);pointer-events:auto}
 .attention-bell span{display:block;width:max-content;position:absolute;left:50%;transform:translateX(-50%);font-size:11px;padding:1px 4px}
 .attention-bell:focus-visible{outline:3px solid var(--text);outline-offset:4px}.attention-bell[data-ringing=true] svg{animation:bell-ring .18s steps(2,end) 4;transform-origin:50% 20%}
@@ -174,3 +172,5 @@ main{grid-template-rows:auto auto auto minmax(0,1fr)}
 .wake-feedback:not(:has(#wake-result:empty)) + .ranch-layout{min-height:0}
 .feed-avatar{width:30px;height:32px;overflow:hidden;background:var(--surface);border:1px solid var(--edge);border-radius:4px}.feed-avatar .portrait{display:block;width:100%;height:100%;overflow:hidden}
 @media(max-width:600px){.ranch-note{display:none}.wake-feedback{font-size:11px}.attention-bell span{font-size:9px}}
+
+#bell-menu{max-height:calc(100vh - 24px);overflow:auto;width:min(460px,calc(100vw - 32px))}.bell-options{display:grid;gap:8px}.bell-options p{margin:0 0 10px;font-size:13px;color:var(--muted)}.bell-options button{text-align:left;padding:10px 12px}.bell-options select{width:100%}

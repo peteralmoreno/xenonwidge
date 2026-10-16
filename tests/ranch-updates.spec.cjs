@@ -56,7 +56,7 @@ test('speech stays inside the ranch edges and replaces an older tweet',async({pa
 
 test('Ranch exposes observation with sidebar navigation and truthful universal wake results',async({page})=>{
  const h=await setup(page);await expect(page.locator('#tasks-tab,#profile-editor,#desk-defaults,#desk-check-work,#desk-stop')).toHaveCount(0);
- await page.locator('#wake-bell').focus();await page.keyboard.press('Enter');await expect.poll(()=>h.calls.filter(c=>c.path==='/control/profiles/wake').length).toBe(1);
+ await page.locator('#wake-bell').focus();await page.keyboard.press('Enter');await expect(page.locator('#bell-menu')).toBeVisible();expect(h.calls).toEqual([]);await page.locator('#bell-wake').click();await expect.poll(()=>h.calls.filter(c=>c.path==='/control/profiles/wake').length).toBe(1);
  await expect(page.locator('#wake-result')).toContainText('0 awake / 1 pending');await expect(page.locator('#wake-bell')).toBeDisabled();
  await page.locator('.wake-feedback summary').click();await expect(page.locator('#wake-outcomes')).toContainText('Waiting for runtime acknowledgment');
  h.data.profiles[0].wake={status:'acknowledged',at:Date.now(),acknowledgedAt:Date.now(),message:'Runtime acknowledged wake-up.'};
@@ -67,7 +67,9 @@ test('Ranch exposes observation with sidebar navigation and truthful universal w
 });
 
 test('automatic activity is labelled and appears in the feed and speech bubble',async({page})=>{
- const h=await setup(page);h.data.updates=[{id:'observed',profileId:'p1',text:'Reading files.',kind:'activity',source:'activity',at:Date.now()}];
- await expect(page.locator('#desk-update-text')).toHaveText('Reading files.');await expect(page.locator('#desk-update-meta')).toContainText('Activity');
- await expect(page.locator('.bot-speech')).toContainText('Reading files.');await page.locator('#all-updates').click();await expect(page.locator('.feed-card')).toContainText('Activity');
+ const h=await setup(page);h.data.updates=[{id:'observed',profileId:'p1',text:'Just finished some work.',kind:'activity',source:'activity',at:Date.now()}];
+ await expect(page.locator('#desk-update-text')).toHaveText('Just finished some work.');await expect(page.locator('#desk-update-meta')).toContainText('Activity');
+ await expect(page.locator('.bot-speech')).toContainText('Just finished some work.');await page.locator('#all-updates').click();await expect(page.locator('.feed-card')).toContainText('Activity');
 });
+
+test('bell menu pauses new pickup explicitly and offers only active Project Managers',async({page})=>{const h=await setup(page);h.data.profiles.push({id:'pm',nickname:'Sasha',active:true,role:'pm'},{id:'bank',nickname:'Retired',active:false,role:'pm'});await expect.poll(()=>page.evaluate(()=>document.getElementById('wake-bell')!==null)).toBe(true);await page.locator('#wake-bell').click();await expect(page.locator('#bell-check')).toBeDisabled();await expect(page.locator('#bell-pm option')).toHaveText(['Sasha']);await page.locator('#bell-help').click();await expect.poll(()=>h.calls.some(c=>c.path==='/control/project-manager'&&c.body.id==='pm')).toBe(true);await page.locator('#bell-pause').click();await expect.poll(()=>h.calls.some(c=>c.path==='/control/pickup'&&c.body.paused===false)).toBe(true);h.data.pickupPaused=false;await page.keyboard.press('Escape');await page.locator('#wake-bell').click();await expect(page.locator('#bell-check')).toBeEnabled();await page.locator('#bell-check').click();await expect.poll(()=>h.calls.some(c=>c.path==='/control/profiles/check-work')).toBe(true);await expect(page.locator('#bell-check')).toBeEnabled();await page.screenshot({path:'artifacts/omp-bot/ranch-bell-menu.png'});await page.keyboard.press('Escape');await expect(page.locator('#wake-bell')).toBeFocused();});

@@ -56,13 +56,13 @@ test('completed bot wake acknowledgment starts a fresh sleep age without changin
  assert.equal(present(acknowledged,181000).state,'ready','completion display still expires from the original completion');
  assert.equal(mode({...done,idleSince:500},now,120),'sleep','an earlier idle timestamp cannot postpone sleep');
 });
-test('curious residents visit reachable landmarks and work interrupts excursions',()=>{
+test('curious residents roam without extra scenery and work interrupts excursions',()=>{
  const {step,homes,maps}=require('../sources/omp-bot/world.js');
  for(let slot=0;slot<6;slot++){
   const bot={slot,personality:'curious'};step(bot,'idle',0,0,false);step(bot,'idle',2000,0,false);
-  assert.ok(maps.meadow.pois[bot.visit]);const destination={...bot.target};
+  assert.equal(bot.visit,null);assert.notDeepEqual(bot.target,homes[slot]);const destination={...bot.target};
   for(let time=2050;time<=18000;time+=50){step(bot,'idle',time,.05,false);if(!bot.walking)break;}
-  assert.ok(Math.hypot(bot.position.x-destination.x,bot.position.y-destination.y)<1,'finish landmark walks');
+  assert.ok(Math.hypot(bot.position.x-destination.x,bot.position.y-destination.y)<1,'finish roaming walks');
   step(bot,'work',18001,0,true);assert.equal(bot.station,'workshop');assert.equal(bot.visit,null);
   step(bot,'sleep',18002,0,true);assert.deepEqual(bot.position,homes[slot]);
  }

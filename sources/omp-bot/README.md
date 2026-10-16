@@ -1,4 +1,4 @@
-# Bot Ranch 0.20.2
+# Bot Ranch 0.20.3
 
 Bot Ranch is an observational ranch with playful bot movement, status, tweets and an integrated viewing desk. The desktop sidebar owns Board, Bots and Factory management. Both use one local companion and support six residents.
 
@@ -24,9 +24,9 @@ Bot Ranch is an observational ranch with playful bot movement, status, tweets an
 
 Motion has Lively, Calm and Still modes; reduced-motion preferences remain respected. It affects display animation only. Bots walk about 50% faster than the previous release. Calm, Curious, Cheerful, Focused and Sociable personalities guide idle wandering; color is cosmetic. Thinking uses a working animation while retaining its truthful status.
 
-Choose Meadow, Courtyard, Glasshouse, Rooftop or Depot maps, with additional idle points of interest. The palette includes Crimson (burgundy, charcoal and ivory), Arctic and Orchid. Feed portraits show the head and chest; updates briefly appear as speech bubbles.
+Choose Meadow, Courtyard, Glasshouse, Rooftop or Depot maps. The four original work stations remain; extra idle props have been removed to keep the ranch open. The palette includes Crimson (burgundy, charcoal and ivory), Arctic and Orchid. Feed portraits show the head and chest; updates briefly appear as speech bubbles.
 
-Click the Attention Bell to wake sleeping residents. Working bots continue and charging/offline bots stay off. A sleeping Pipeline gets one status check without a new job or renewed waiting budget. Needs you opens the sidebar attention lane. The Ranch itself no longer embeds task editing, profile editing or context-policy controls.
+Click the Attention Bell to open its action menu: Wake sleeping bots, Check for work, Call Project Manager, and Pause/Resume new pickups. Opening the menu does nothing to bots. Work checks respect global pause and individual automatic-pickup settings. Call Project Manager opens or focuses the chosen active PM terminal without sending a message. Pause only prevents new automatic pickups; current work continues. Choose Wake sleeping bots to wake sleeping residents. Working bots continue and charging/offline bots stay off. A sleeping Pipeline gets one status check without a new job or renewed waiting budget. Needs you opens the sidebar attention lane. The Ranch itself no longer embeds task editing, profile editing or context-policy controls.
 
 ## Reliable work and continuity
 
@@ -53,6 +53,12 @@ The companion Board has Workflow and Bot queues views. Inbox holds unreleased dr
 
 Finish then rest disables future pickup without stopping current work. Stop current task requires confirmation and verified terminal closure; interrupted tasks need review/retry. Current attempts retain their launch settings. Completion enters Done unless Human review is enabled; review preserves the reported handover until acceptance.
 
-Idle work checks: the individual Ring bell in the sidebar requests a check when safe; automatic pickup uses the same idle gate. Busy agents, questions, queued messages and asynchronous jobs defer checking. The universal Attention Bell targets sleeping residents only and preserves global pickup and per-bot pickup preferences. Terminals hand off to a fresh task process with scoped reports. Updated extensions require a safe reopen of existing sessions. Lost responses retry the same reservation; ambiguous execution remains unresolved for inspection. Live provider execution and physical iCUE touch are not certified by browser/mock tests.
+Idle work checks: the individual Ring bell in the sidebar requests a check when safe; automatic pickup uses the same idle gate. Busy agents, questions, queued messages and asynchronous jobs defer checking. The Wake sleeping bots bell action targets sleeping residents only and preserves global pickup and per-bot pickup preferences. Terminals hand off to a fresh task process with scoped reports. Updated extensions require a safe reopen of existing sessions. Lost responses retry the same reservation; ambiguous execution remains unresolved for inspection. Live provider execution and physical iCUE touch are not certified by browser/mock tests.
 
 The Ranch feed uses compact posts with bot names and timestamps. Fresh bot progress updates also appear in short speech bubbles for eight seconds; newer posts replace the same bot's bubble. Bubbles follow the bot, stay inside the Ranch, and leave touch/drag gestures available. Saved history stays in the feed without replaying when the widget opens.
+
+## Activity log (0.20.3)
+
+The desk feed is a shared log of meaningful events: task pickup, task completion or review, ordinary work starting/finishing, needing help, and one relaxing notice after becoming idle. Automatic posts use existing runtime events, require no model calls, and never narrate file reads, commands or tool names. Wording varies lightly by personality; it cannot invent accomplishments. Ordinary work completion never marks a Board task Done. Existing history is retained.
+
+Use `ranch_status` for actual milestones or a specific request for help. Communication checkpoints can be written in task instructions, for example: "Post a short update when the cause is confirmed, after the fix is implemented, and after verification. Continue between updates; stop only if approval is explicitly required." This uses the existing status tool; there is no separate checkpoint editor. The bot must actually reach a checkpoint before reporting it. See the [status guide](../../docs/guides/bot-ranch-pipeline.md#short-public-status-updates).

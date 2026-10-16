@@ -35,8 +35,8 @@ test('attention positions leave the clickable bell and neighboring residents cle
 });
 test('new maps have distinct scenery destinations and interrupt idle visits for work',()=>{
  for(const map of ['meadow','courtyard','glasshouse','rooftop','depot']){
-  assert.equal(world.validateMap(world.maps[map]),true);assert.ok(Object.keys(world.maps[map].pois).length>=4);
-  const b={slot:0,personality:'curious'};world.step(b,'idle',0,0,false,540,94,1650,72,false,map);world.step(b,'idle',2000,0,false,540,94,1650,72,false,map);assert.ok(b.visit);
+  assert.equal(world.validateMap(world.maps[map]),true);assert.ok(Object.keys(world.maps[map].pois||{}).length===0);
+  const b={slot:0,personality:'curious'};world.step(b,'idle',0,0,false,540,94,1650,72,false,map);world.step(b,'idle',2000,0,false,540,94,1650,72,false,map);assert.equal(b.visit,null);
   b.session={state:'writing'};world.step(b,'work',2001,0,false,540,94,1650,72,false,map);assert.equal(b.station,world.maps[map].workRoutes.writing);assert.equal(b.visit,null);
  }
 });

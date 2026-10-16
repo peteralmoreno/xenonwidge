@@ -90,3 +90,5 @@ test('ordinary managed extension registers status tool and gives its prompt hint
  assert.ok(tools.has('ranch_status'));assert.match((await handlers.get('before_agent_start')({},{})).systemPromptAppend,/ranch_status/);
  }finally{for(const [key,value]of Object.entries(saved)){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
 });
+
+test('actual task lifecycle posts task-named pickup and completion once',async()=>{const {m,p,source}=await fixture(),r=await m.pollWork(p.id,source,token,true),h=r.handoff;m.claimTaskRuntime(p.id,h.launchId,h.attemptId,h.token,'client-a');const event=type=>m.recordTaskRuntimeEvent(p.id,h.launchId,h.attemptId,h.token,{type},'client-a');event('agent_start');event('agent_start');event('agent_end');event('agent_end');const log=m.updates.items.filter(x=>x.kind==='lifecycle');assert.equal(log.length,2);assert.match(log[0].text,/picked up task Work/);assert.match(log[1].text,/Done with task Work/);assert.ok(log.every(x=>x.taskId===m.tasks[0].id));});

@@ -9,21 +9,9 @@
  const speech=new Map(),speechSeen=new Set();let speechStarted=false;
  const dismissed=new Set(),completionSeen=new Map();
  const sceneStations={reading:'.reading-nook',researching:'.research-station',writing:'.writing-bench',workshop:'.workshop',bell:'.attention-bell'};
- const poiArt={
-  fountain:'<path fill="var(--stone-edge)" d="M4 30h48v8H4zM10 25h36v9H10zM24 8h8v20h-8z"/><path fill="#b5e5e8" d="M8 28h40v4H8zM15 12h26v5H15zM24 4h8v10h-8z"/>',
-  coffee:'<path fill="var(--path-edge)" d="M9 16h38v24H9z"/><path fill="var(--label)" d="M5 8h46v9H5zM16 22h24v10H16z"/><path fill="var(--label-ink)" d="M20 23h11v7H20zM31 24h4v4h-4z"/>',
-  noticeboard:'<path fill="var(--path-edge)" d="M8 5h40v27H8zM11 30h5v10h-5zM40 30h5v10h-5z"/><path fill="var(--label)" d="M13 10h12v16H13zM30 10h12v9H30zM30 22h12v4H30z"/>',
-  garden:'<path fill="var(--path-edge)" d="M4 27h48v12H4z"/><path fill="var(--grass-light)" d="M10 9h8v20h-8zM6 15h16v8H6zM29 4h10v25H29zM24 12h20v9H24z"/><path fill="var(--label)" d="M12 8h5v5h-5zM31 3h6v6h-6z"/>',
-  lookout:'<path fill="var(--stone-edge)" d="M9 35h38v5H9zM26 11h5v25h-5z"/><path fill="var(--surface)" d="m12 9 28-7 5 12-28 7z"/><path fill="var(--label)" d="m37 3 7-2 6 14-7 2z"/>',
-  parts:'<path fill="var(--surface)" d="M7 5h5v35H7zM44 5h5v35h-5zM7 17h42v4H7zM7 35h42v4H7z"/><path fill="var(--path)" d="M15 7h11v10H15zM30 10h11v7H30zM15 25h15v10H15zM34 25h7v10h-7z"/>'
- };
  function syncMapScene(){
   const map=document.body.dataset.map||'meadow',layout=RanchWorld.mapLayout(map);
   for(const [name,selector]of Object.entries(sceneStations)){const element=document.querySelector(selector),point=layout[name];if(element&&point){element.style.left=point.left;element.style.top=point.top;}}
-  for(const [name,art]of Object.entries(poiArt)){
-   let el=document.getElementById('poi-'+name);if(!el){el=document.createElement('div');el.id='poi-'+name;el.className='idle-landmark';el.setAttribute('aria-hidden','true');el.innerHTML='<svg viewBox="0 0 56 44" shape-rendering="crispEdges">'+art+'</svg><span></span>';$('scene').append(el);}
-   const poi=RanchWorld.maps[map]?.pois?.[name];el.hidden=!poi;if(poi){el.style.left=poi.x+'%';el.style.top=poi.y+'%';el.querySelector('span').textContent=poi.label;}
-  }
  }
  document.body.addEventListener('appearancechange',syncMapScene);syncMapScene();
  const reduced=matchMedia('(prefers-reduced-motion: reduce)'),bots=new Map();
@@ -139,6 +127,7 @@
   if(!controlKey)return;
   try{controlState=await controlApi('state');if(connected)render();else selection();renderAttention();renderWake();}
   catch(e){controlState=null;if(e.status===401)$('task-notice').textContent='Connection key rejected. Copy it from botRanch Settings.';selection();renderAttention();}
+  if($('bell-menu').open&&!bellBusy)renderBell();
  }
  function renderAttention(){
   const tasks=(controlState?.tasks||[]).filter(t=>!t.archived&&['review','blocked'].includes(t.status));
@@ -170,7 +159,30 @@
   }catch(e){$('wake-result').textContent='Wake request unavailable: '+e.message;}
   finally{wakeBusy=false;setTimeout(()=>{$('wake-bell').disabled=false;},Math.max(0,wakeCooldown-Date.now()));}
  }
- $('wake-bell').onclick=wakeSleeping;
+ function renderBell(){
+  const paused=controlState?.pickupPaused!==false,available=connected&&!!controlKey&&!!controlState;
+  $('bell-pause').textContent=paused?'Resume new pickups':'Pause new pickups';
+  $('bell-check').disabled=!available||paused;$('bell-pause').disabled=!available;$('bell-wake').disabled=!available||wakeBusy||Date.now()<wakeCooldown;
+  const old=$('bell-pm').value;$('bell-pm').replaceChildren();
+  for(const p of (controlState?.profiles||[]).filter(p=>p.active&&p.role==='pm')){const option=document.createElement('option');option.value=p.id;option.textContent=p.nickname;$('bell-pm').append(option);}
+  if([...$('bell-pm').options].some(p=>p.value===old))$('bell-pm').value=old;
+  const hasPm=$('bell-pm').options.length>0;$('bell-help').disabled=!available||!hasPm;$('bell-pm').disabled=!hasPm;
+  $('bell-help-note').textContent=hasPm?'Open or focus their terminal so you can ask for help. No message is sent.':'Create a Project Manager in the companion Factory and bring them onto the ranch.';
+ }
+ let bellBusy=false;
+ async function bellAction(action){
+  if(bellBusy)return;bellBusy=true;for(const button of $('bell-menu').querySelectorAll('.bell-options button'))button.disabled=true;
+  try{const result=await action();$('bell-result').textContent=result?.message||result?.result||'Updated.';await loadControl();}
+  catch(e){$('bell-result').textContent=e.message;}
+  finally{bellBusy=false;renderBell();}
+ }
+ $('wake-bell').onclick=()=>{renderBell();$('bell-result').textContent=controlState?.pickupPaused?'New pickups are paused. Current work can continue.':'';$('bell-menu').showModal();};
+ $('bell-close').onclick=()=>$('bell-menu').close();$('bell-menu').addEventListener('close',()=>$('wake-bell').focus());
+ $('bell-wake').onclick=()=>{$('bell-menu').close();void wakeSleeping();};
+ $('bell-check').onclick=()=>bellAction(()=>controlApi('profiles/check-work',{}));
+ $('bell-help').onclick=()=>bellAction(()=>controlApi('project-manager',{id:$('bell-pm').value}));
+ $('bell-pause').onclick=()=>bellAction(async()=>{const paused=controlState?.pickupPaused!==true;await controlApi('pickup',{paused});return {message:paused?'New pickups paused. Current work continues.':'New pickups resumed.'};});
+
  async function poll(){if(!key||inFlight)return;inFlight=true;const version=generation,epoch=selectionTicket,pending=selectionPending;try{const res=await fetch(base+'/state',{headers:{Authorization:'Bearer '+key},signal:AbortSignal.timeout(3000)});if(res.status===401)throw Error('Connection key rejected. Open Connect to update it.');if(!res.ok)throw Error('Companion unavailable.');const data=await res.json();if(data.app!=='omp-bot'||data.version!==1||!Array.isArray(data.sessions))throw Error('Unsupported companion.');if(version!==generation)return;connected=true;sessions=data.sessions;focusSupported=data.capabilities?.focus===true;selectionSupported=data.capabilities?.selection===true;if(data.selectionInstance&&data.selectionInstance!==selectionInstance){selectionInstance=data.selectionInstance;selectionRevision=-1;}if(!selectionPinned&&!pending&&!selectionPending&&epoch===selectionTicket&&Number.isInteger(data.selectionRevision)&&data.selectionRevision>selectionRevision){selectionRevision=data.selectionRevision;if(sessions.some(s=>s.id===data.selectedId))selected=data.selectedId;}sleepSeconds=data.sleepSeconds||120;$('connect').textContent='Connected';$('companion-view').hidden=true;render();}catch(e){if(version!==generation)return;connected=false;$('connect').textContent='Connect';const network=e instanceof TypeError||e.name==='TimeoutError'||e.name==='AbortError';$('companion-view').hidden=hosted||!network;for(const b of bots.values()){b.state='offline';b.session={...b.session,state:'offline'};b.el.dataset.state='offline';b.el.dataset.walking='false';if(b.lastState!=='offline'){b.el.querySelector('svg')?.remove();b.el.insertAdjacentHTML('afterbegin',RanchSprites.svg(b.color,'offline',b.design));b.lastState='offline';}}renderLatestPost();renderFeed();display('offline',network?'Start companion; allow 127.0.0.1 in iCUE Widget Access.':e.message);}finally{inFlight=false;}}
  $('connect').onclick=()=>{$('key').value=key;$('pairing').showModal();};$('close').onclick=()=>$('pairing').close();$('pair-form').onsubmit=e=>{e.preventDefault();const candidate=$('key').value.trim().toLowerCase();if(!/^[a-f0-9]{64}$/.test(candidate)){$('pair-error').textContent='Paste the complete 64-character connection key.';return;}key=candidate;controlKey=key;generation++;controlState=null;controlSignature='';save('omp-bot.key',key);try{localStorage.removeItem('omp-bot.control');}catch{}loadControl();$('pair-error').textContent='';$('pairing').close();poll();};
   function motionLabel(){

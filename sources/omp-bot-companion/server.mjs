@@ -104,6 +104,9 @@ export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,admi
     const data=JSON.parse(body);
     if(req.url==='/control/ui/attention'){manager.uiRequest={id:randomUUID(),view:'attention'};return reply(200,{message:'Requested the sidebar attention view.'});}
     if(req.url==='/control/profiles/wake')return reply(200,manager.wakeSleeping());
+    if(req.url==='/control/profiles/check-work')return reply(200,manager.checkAvailableWork());
+    if(req.url==='/control/project-manager'){const p=manager.profiles.find(p=>p.id===data.id&&p.active&&p.role==='pm');if(!p)throw Error('Choose an active Project Manager. Create one in Factory if needed.');return reply(200,await manager.action(p.id,'resume'));}
+
     if(req.url==='/control/task/queue')return reply(200,manager.queueTask(data));if(req.url==='/control/task/stop')return reply(200,await manager.stopTask(data.id,data.confirmed,data.expectedAttemptId));if(req.url==='/control/task')return reply(200,manager.saveTask(data));
     if(req.url==='/control/task/archive')return reply(200,manager.archiveTask(data.id,data.expectedRevision));
     if(req.url==='/control/task/pipeline')return reply(200,await manager.pipelineAction(data));

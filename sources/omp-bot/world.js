@@ -9,11 +9,6 @@
  maps.glasshouse={stations:{reading:{x:28,y:25},researching:{x:72,y:25},writing:{x:30,y:73},workshop:{x:72,y:73},bell:{x:50,y:50}},workRoutes:{...routes}};
  maps.rooftop={stations:{reading:{x:28,y:32},researching:{x:72,y:32},writing:{x:28,y:73},workshop:{x:72,y:73},bell:{x:50,y:52}},workRoutes:{...routes}};
  maps.depot={stations:{reading:{x:27,y:27},researching:{x:73,y:27},writing:{x:27,y:73},workshop:{x:73,y:73},bell:{x:50,y:50}},workRoutes:{...routes}};
- const landmarks={fountain:{x:50,y:26,label:'Fountain',social:true},coffee:{x:50,y:75,label:'Coffee kiosk',social:true},noticeboard:{x:35,y:50,label:'Noticeboard'},garden:{x:65,y:50,label:'Planter garden'},lookout:{x:50,y:14,label:'Lookout'},parts:{x:50,y:86,label:'Spare parts'}};
- for(const [name,map]of Object.entries(maps)){
-  const names=name==='glasshouse'?['fountain','coffee','garden','noticeboard']:name==='rooftop'?['lookout','coffee','garden','noticeboard']:name==='depot'?['parts','coffee','noticeboard','lookout']:['fountain','coffee','noticeboard','garden'];
-  map.pois=Object.fromEntries(names.map(id=>[id,{...landmarks[id]}]));
- }
  const personalities={calm:{speed:32,turns:3,range:12},curious:{speed:34,turns:6,range:32},cheerful:{speed:38,turns:6,range:22},focused:{speed:36,turns:1,range:5},sociable:{speed:34,turns:4,range:24}};
  function motionPreference(saved,legacyMotion,legacyQuiet){return ['lively','calm','still'].includes(saved)?saved:legacyMotion==='off'?'still':legacyQuiet==='on'?'calm':'lively';}
  function effectiveMotion(preference,reduced){return reduced?'still':motionPreference(preference);}
@@ -46,13 +41,9 @@
   if(!bot.position)bot.position={...home};if(bot.mode!==mode||bot.station!==stationName||bot.layout!==layout){bot.mode=mode;bot.target={...destination};bot.next=time+1200;bot.visit=null;bot.visits=bot.visits||0;}bot.station=stationName;bot.layout=layout;
   constrain(bot.position);constrain(bot.target);
   if(mode==='idle'&&time>bot.next&&!paused&&Math.hypot(bot.target.x-bot.position.x,bot.target.y-bot.position.y)<.2){
-   const points=Object.entries(activeMap.pois||{}),visits=bot.visits++;
-   if(personality==='curious'||personality==='sociable'){
-    const neighbors=personality==='sociable'?(bot.neighbors||[]).filter(b=>b!==bot&&b.mode==='idle'&&b.position):[];
-    const preferred=personality==='sociable'?points.filter(([,p])=>p.social):points,candidates=preferred.length?preferred:points;
-    if(neighbors.length&&visits%2===0){const neighbor=neighbors[(bot.slot+visits)%neighbors.length];bot.visit='neighbor';bot.target={x:neighbor.position.x+(bot.slot%2?1:-1)*(botWidth+14)/width*100,y:neighbor.position.y};}
-    else if(candidates.length){const [id,p]=candidates[(bot.slot+visits)%candidates.length];bot.visit=id;bot.target={x:p.x+(bot.slot%3-1)*(botWidth+8)/width*100,y:p.y+botHeight*.6/height*100};}
-   }else{
+   const visits=bot.visits++,neighbors=personality==='sociable'?(bot.neighbors||[]).filter(b=>b!==bot&&b.mode==='idle'&&b.position):[];
+   if(neighbors.length&&visits%2===0){const neighbor=neighbors[(bot.slot+visits)%neighbors.length];bot.visit='neighbor';bot.target={x:neighbor.position.x+(bot.slot%2?1:-1)*(botWidth+14)/width*100,y:neighbor.position.y};}
+   else{
     const center=personality==='focused'?activeMap.stations[activeMap.workRoutes[activity]]||home:home;
     const angle=(bot.slot*1.7+visits*2.4),range=trait.range*(quiet?.5:1);bot.visit=null;bot.target={x:center.x+Math.cos(angle)*range,y:center.y+Math.sin(angle)*range*.55};
    }

@@ -15,7 +15,7 @@ test('all map and theme combinations keep six residents and bell reachable at La
   await page.setViewportSize({width,height});
   for(const map of ['meadow','courtyard','glasshouse','rooftop','depot'])for(const theme of ['moss','sunset','moonlight','crimson','arctic','orchid']){
    await page.locator('#look').click();await page.locator('#appearance-map').selectOption(map);await page.locator('#appearance-theme').selectOption(theme);await page.locator('#appearance-close').click();
-   await expect(page.locator('body')).toHaveAttribute('data-map',map);await expect(page.locator('#wake-bell')).toBeVisible();await expect(page.locator('.idle-landmark:visible')).toHaveCount(4);
+   await expect(page.locator('body')).toHaveAttribute('data-map',map);await expect(page.locator('#wake-bell')).toBeVisible();await expect(page.locator('.idle-landmark:visible')).toHaveCount(0);
    await expect.poll(()=>page.locator('.bot').evaluateAll(bots=>bots.every(b=>{const r=b.getBoundingClientRect(),s=document.getElementById('scene').getBoundingClientRect();return r.left>=s.left&&r.right<=s.right&&r.top>=s.top&&r.bottom<=s.bottom;}))).toBe(true);
    expect(await page.locator('#wake-bell').evaluate(b=>{const r=b.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('#wake-bell')===b;})).toBe(true);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);

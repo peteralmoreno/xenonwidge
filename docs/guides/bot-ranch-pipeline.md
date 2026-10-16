@@ -27,13 +27,13 @@ Supported status values are `queued`, `running`, `succeeded`, and `failed`. A fi
 
 The companion polls without model calls and records changed progress. It backs off on transient failures and respects Retry-After. Keep the companion running for checks. Sleep or shutdown of the computer pauses execution; persisted job identity and deadlines allow reconciliation after restart without resubmitting the job.
 
-At the monitoring deadline the bot sleeps. The job is still external and may still be running. Task details show the last check, deadline, errors and result. **Resume monitoring** checks the same job immediately (unless Retry-After requires waiting) and applies a fresh selected monitoring budget. **Stop tracking** pauses checks; it does not cancel the external job. A deliberate Poke/shake on a sleeping monitor resumes a one-hour monitoring window for that same job.
+At the monitoring deadline the bot sleeps. The job is still external and may still be running. Task details show the last check, deadline, errors and result. **Resume monitoring** checks the same job immediately (unless Retry-After requires waiting) and applies a fresh selected monitoring budget. **Stop tracking** pauses checks; it does not cancel the external job. The bell Wake action or deliberate shake checks a sleeping monitor once without extending its monitoring window.
 
 An uncertain startup is blocked rather than retried: the service may have accepted the POST before the connection failed. Locate the submission at the provider using the displayed idempotency key, then choose **Link existing job** in task details. Confirm that the ID belongs to this submission. Ranch verifies it with a GET and keeps the original attempt; it does not submit another job. An unverified ID stays unresolved. If the provider confirms failure, **Prepare new attempt** preserves that job in history and returns the task to Inbox; a later Start submits a new job. Sleeping, stopping tracking and network errors never count as successful completion, and unresolved jobs retain ownership to prevent duplicate work. Confirmed external success follows the task's Human review setting.
 
 ## Short public status updates
 
-Managed OMP task sessions expose `ranch_status`, which the agent uses for meaningful progress posts of at most 240 characters/two lines. These are deliberate public summaries, not raw reasoning or terminal logs. The Desk shows the selected bot's latest post. **All updates** shows the shared feed; select a bot to return to its details.
+Managed OMP task and ordinary interactive sessions expose `ranch_status`, which the agent uses for meaningful progress posts of at most 240 characters/two lines. These are deliberate public summaries, not raw reasoning or terminal logs. The Desk shows the selected bot's latest post. **All updates** shows the shared feed; select a bot to return to its details.
 
 Progress posts are throttled and the feed retains the latest 200 entries under bot home in `ranch-updates.json` (the widget renders up to 50). Older entries expire; task history and completion handovers remain separate. Existing OMP terminals need a safe restart to load the new status tool.
 
@@ -42,3 +42,11 @@ Shake a held bot deliberately left/right to request a work check, or use **Poke 
 ## /loop is different
 
 Use [Oh My Pi /loop](bot-ranch-loop.md) for repeated reasoning or repair. The Board offers a bounded command helper for a separate OMP terminal. Managed loop execution is unavailable until a supported native loop-control and final-completion contract can be verified. Pipeline polling is already implemented and needs no model loop.
+
+### Communication checkpoints
+
+Put named checkpoints in task instructions, for example:
+
+> Share a short update when you confirm the cause, finish the implementation, and finish verification. Say what changed or what you need. Continue after each update; stop only if an explicit approval is required.
+
+The bot uses `ranch_status` when it actually reaches each checkpoint. Automatic lifecycle posts cover pickup and completion; checkpoints add meaningful intermediate outcomes. No per-tool narration or timer-based model calls are needed. Idle notices are emitted once per idle period, and a quiet bot does not imply failed work. These are instruction-based checkpoints, not an enforced workflow gate or a separate editor.
