@@ -2,12 +2,26 @@ import { previewChanges, applyChanges } from './board-changes.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readPmSkill } from './pm-skill.mjs';
 
 const catalog = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'agent-catalog.json'), 'utf8'));
 
-const routeNames = new Set(['/admin/ai/catalog','/admin/ai/snapshot','/admin/ai/preview','/admin/ai/apply','/admin/ai/access','/admin/ai/history','/admin/ai/operate']);
+const routeNames = new Set(['/admin/ai/catalog','/admin/ai/skill','/admin/ai/snapshot','/admin/ai/preview','/admin/ai/apply','/admin/ai/access','/admin/ai/history','/admin/ai/operate']);
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const statusFor = error => error?.code === 'conflict' ? 409 : error?.code === 'permission' ? 403 : 400;
+const profileFields = ['id','nickname','revision','folder','design','color','active','slot','autoPickup','preferredModel','readOnly','role','contextPolicy','personality','instructionsPath','busy','activityBusy','status','state','label','workCheckSupported','workCheckPending','lastSeen'];
+const pick = (value, fields) => Object.fromEntries(fields.filter(key => Object.hasOwn(value, key)).map(key => [key, structuredClone(value[key])]));
+
+/** Shared closed request validation for the CLI and authenticated API. */
+export function validateOperateRequest(body) {
+  if (!isObject(body) || typeof body.action !== 'string' || !Object.hasOwn(catalog.operateActions, body.action)) throw Error('Unsupported operate action.');
+  const allowed = catalog.operateActions[body.action].required;
+  if (Object.keys(body).length !== allowed.length || Object.keys(body).some(key => !allowed.includes(key))) throw Error('Operate request contains unsupported or missing fields.');
+  if (body.action !== 'ring' && (typeof body.taskId !== 'string' || !body.taskId.trim() || !Number.isSafeInteger(body.expectedRevision) || body.expectedRevision < 0)) throw Error('Operate request requires a task ID and nonnegative safe integer revision.');
+  if (body.action === 'start' && (typeof body.profileId !== 'string' || !body.profileId.trim())) throw Error('Start requires a saved profile ID.');
+  if (body.action === 'follow-up' && (typeof body.note !== 'string' || !body.note.trim() || body.note.length > 4000)) throw Error('Add a follow-up instruction of 1–4000 characters.');
+  return structuredClone(body);
+}
 
 /**
  * Construct the restricted AI API route handler. Call only after the companion's existing
@@ -25,7 +39,10 @@ export function createAgentApi({ manager, persistTransaction, setAccess, operate
     return {
       taskRevision: manager.taskRevision,
       tasks: structuredClone(manager.tasks),
-      profiles: (view.profiles || []).map(({ id, nickname, active, slot, autoPickup, preferredModel, readOnly, role }) => ({ id, nickname, active, slot, autoPickup, preferredModel, readOnly, role })),
+      profiles: (view.profiles || []).map(profile => ({ ...pick(profile, profileFields), workCheckResult: isObject(profile.workCheckResult) ? pick(profile.workCheckResult, ['status','message']) : null })),
+      roles: (view.roles || []).map(role => pick(role, ['id','name','model','instructionsPath','error'])),
+      updates: (view.updates || []).map(update => pick(update, ['id','profileId','taskId','text','kind','at'])),
+      pickupPaused: view.pickupPaused === true,
       familyPolicies: structuredClone(manager.aiState?.familyPolicies || manager.familyPolicies || {}),
       access: getAccess(),
     };
@@ -42,6 +59,7 @@ export function createAgentApi({ manager, persistTransaction, setAccess, operate
       const access = getAccess();
       if (!['inspect','organize','operate'].includes(access)) return { status: 503, body: { error: 'AI Sync access state is invalid. Restore inspect access in Settings.' } };
       if (method === 'GET' && url === '/admin/ai/catalog') return { status: 200, body: catalog };
+      if (method === 'GET' && url === '/admin/ai/skill') return { status: 200, body: readPmSkill() };
       if (method === 'GET' && url === '/admin/ai/access') return { status: 200, body: applyAccess() };
       if (method === 'GET' && url === '/admin/ai/snapshot') return { status: 200, body: snapshot() };
       if (method === 'GET' && url === '/admin/ai/history') {
@@ -78,12 +96,10 @@ export function createAgentApi({ manager, persistTransaction, setAccess, operate
       }
       if (url === '/admin/ai/operate') {
         if (access !== 'operate') return { status: 403, body: { error: 'Operate access is required for this action.' } };
-        if (typeof operate !== 'function' || !['release','start','ring'].includes(body.action)) return { status: 400, body: { error: 'Unsupported operate action.' } };
-        const allowed = body.action === 'release' ? ['action','taskId','expectedRevision'] : body.action === 'start' ? ['action','taskId','profileId','expectedRevision'] : ['action'];
-        if (Object.keys(body).length !== allowed.length || Object.keys(body).some(key => !allowed.includes(key))) return { status: 400, body: { error: 'Operate request contains unsupported fields.' } };
-        if (body.action === 'ring' ? false : typeof body.taskId !== 'string' || !body.taskId || !Number.isSafeInteger(body.expectedRevision)) return { status: 400, body: { error: 'Operate request has invalid task fields.' } };
-        if (body.action === 'start' && (typeof body.profileId !== 'string' || !body.profileId)) return { status: 400, body: { error: 'Start requires a saved profile ID.' } };
-        return { status: 200, body: await operate(body.action, structuredClone(body)) };
+        if (typeof operate !== 'function') throw Error('Operate actions are unavailable.');
+        const action = validateOperateRequest(body);
+        if (action.action === 'accept' && manager.tasks.find(task => task.id === action.taskId)?.humanReview !== false) throw Object.assign(Error('Human-review tasks require acceptance by a human in the Board.'), { code: 'permission' });
+        return { status: 200, body: await operate(action.action, action) };
       }
       return { status: 404, body: { error: 'Not found.' } };
     } catch (error) {

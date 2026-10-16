@@ -12,7 +12,23 @@ const deskFiles={'/desk/appearance.js':['appearance.js','text/javascript'],'/des
 const publicFiles={'/ui/appearance.js':['appearance.js','text/javascript'],'/ui/':['index.html','text/html'],'/ui/app.js':['app.js','text/javascript'],'/ui/sprites.js':['sprites.js','text/javascript'],'/ui/world.js':['world.js','text/javascript'],'/ui/widget.css':['widget.css','text/css'],'/ui/resources/icon.svg':['resources/icon.svg','image/svg+xml']};
 export function createBridge({key,now=Date.now,ttl=12000,focusTerminal=null,adminKey=null,manager=null,instanceId='unknown'}){
  const selectionInstance=randomUUID();
- const agentApi=manager?createAgentApi({manager,persistTransaction:transaction=>manager.commitAiTransaction(transaction),setAccess:async access=>manager.setAiAccess(access),operate:async(action,body)=>{if(action==='ring')return manager.ringAll();const task=manager.tasks.find(item=>item.id===body.taskId);if(!task)throw Error('Unknown task.');if(action==='release')return manager.saveTask({...task,expectedRevision:body.expectedRevision,releasedForPickup:true});if(action==='start')return manager.dispatchTask(body.taskId,body.profileId,body.expectedRevision);throw Error('Unsupported operate action.');},now}):null;
+ const agentApi=manager?createAgentApi({manager,persistTransaction:transaction=>manager.commitAiTransaction(transaction),setAccess:async access=>manager.setAiAccess(access),operate:async(action,body)=>{
+  if(action==='ring')return manager.ringAll();
+  const task=manager.tasks.find(item=>item.id===body.taskId);
+  if(!task||task.archived)throw Error('Unknown or archived task.');
+  if(task.revision!==body.expectedRevision)throw Object.assign(Error('Conflict: task changed. Reload the Board before operating.'),{code:'conflict'});
+  if(action==='release'||action==='hold'){
+   if(task.status!=='todo')throw Error('Only pending tasks can be released or held.');
+   return manager.saveTask({...task,expectedRevision:body.expectedRevision,releasedForPickup:action==='release'});
+  }
+  if(action==='start')return manager.dispatchTask(body.taskId,body.profileId,body.expectedRevision);
+  if(action==='archive')return manager.archiveTask(body.taskId,body.expectedRevision);
+  if(action==='accept'||action==='follow-up'){
+   if(manager.taskLocks.has(task.id)||task.attempts?.some(attempt=>['dispatching','awaiting-runtime','claimed','running','unresolved'].includes(attempt.state)))throw Error('Cannot review an active or unresolved task.');
+   return manager.reviewTask(body.taskId,body.expectedRevision,action,body.note,'agent');
+  }
+  throw Error('Unsupported operate action.');
+ },now}):null;
  const sessions=new Map(),terminals=new Map(),managedIds=new Set();let focusing=false,lastFocus=-Infinity,selectedId="",selectionRevision=0;
  const valid=s=>s&&s.version===1&&typeof s.id==='string'&&/^[\w:-]{1,160}$/.test(s.id)&&Number.isSafeInteger(s.sequence)&&s.sequence>0&&STATES.includes(s.state)&&typeof s.project==='string'&&s.project.length<=80&&typeof s.label==='string'&&s.label.length<=120&&[s.startedAt,s.finishedAt].every(t=>t===null||Number.isFinite(t)&&t>=0&&t<=now()+60000)&&Number.isInteger(s.activeCount)&&s.activeCount>=0&&s.activeCount<=1000;
  return http.createServer(async(req,res)=>{

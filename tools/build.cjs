@@ -18,7 +18,7 @@ const widgetFiles = {
 };
 const ranchFiles = [
   'README.md', 'bridge.mjs', 'config.mjs', 'extension.mjs', 'focus.mjs', 'manager.mjs', 'pipeline.mjs', 'pipeline-manager.mjs', 'updates.mjs', 'runtime-policy.mjs', 'bot-library.mjs', 'queue-policy.mjs', 'pickup-policy.mjs', 'work-check.mjs', 'terminal-runner.mjs',
-  'agent-api.mjs', 'agent-catalog.json', 'board-changes.mjs', 'ranch-cli.mjs', 'botRanch-cli.cmd', 'companion-health.mjs', 'companion-lock.mjs', 'lifecycle-log.mjs',
+  'pm-skill.mjs', 'skills/bot-ranch-pm/SKILL.md', 'agent-api.mjs', 'agent-catalog.json', 'board-changes.mjs', 'ranch-cli.mjs', 'botRanch-cli.cmd', 'companion-health.mjs', 'companion-lock.mjs', 'lifecycle-log.mjs',
   'companion-start.mjs', 'install.mjs', 'Install-Shortcut.ps1', 'Install botRanch.cmd', 'Open botRanch.cmd', 'metadata.mjs', 'native.mjs', 'open-desktop.mjs', 'open-setup.mjs', 'preview.mjs', 'server.mjs', 'state.mjs',
   'Focus-Terminal.ps1', 'Terminal-Control.ps1', 'Start-Bot-Ranch.ps1', 'native/Terminal-Control.cs',
   'Launch-Companion.cmd', 'Open Bot Ranch Setup.cmd', 'Start-Bot-Ranch.cmd', 'Start-OMP.cmd',

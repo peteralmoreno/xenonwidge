@@ -1,4 +1,34 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),http=require('node:http');
+test('operate action names and revisions require their exact primitive types',async()=>{
+ const {validateOperateRequest}=await import('../sources/omp-bot-companion/agent-api.mjs');
+ for(const body of [{action:['hold'],taskId:'task',expectedRevision:1},{action:'hold',taskId:'task',expectedRevision:'1'},{action:'hold',taskId:'task',expectedRevision:1.5},{action:'hold',taskId:'task',expectedRevision:Number.MAX_SAFE_INTEGER+1},{action:'follow-up',taskId:'task',expectedRevision:1,note:' '.repeat(10)},{action:'follow-up',taskId:'task',expectedRevision:1,note:'x'.repeat(4001)}])assert.throws(()=>validateOperateRequest(body));
+});
+test('PM snapshot exposes planning context through field allowlists and serves its skill',async()=>{
+ const {createAgentApi}=await import('../sources/omp-bot-companion/agent-api.mjs');
+ const profile={id:'pm',revision:4,folder:'D:\\work',design:'pm',color:2,contextPolicy:'per-task',personality:'calm',instructionsPath:'D:\\role.md',busy:false,activityBusy:true,status:'connected',state:'working',label:'Planning',workCheckSupported:true,workCheckPending:false,workCheckResult:{status:'empty',message:'No work',runtimeKeyHash:'secret'},runtimeKeyHash:'secret',sessions:['secret']};
+ const manager={tasks:[],taskRevision:0,aiState:{access:'inspect'},view:()=>({profiles:[profile],pickupPaused:true,roles:[{id:'manager',name:'Manager',model:'auto',instructionsPath:'D:\\role.md',instructions:'secret',privateKey:'secret'}],updates:[{id:'u',profileId:'pm',taskId:null,at:1,text:'Planning',kind:'progress',rawSession:'secret'}]})};
+ const api=createAgentApi({manager});const result=await api.handle({method:'GET',url:'/admin/ai/snapshot'});
+ assert.equal(result.status,200);assert.equal(result.body.profiles[0].folder,'D:\\work');assert.equal(result.body.profiles[0].revision,4);assert.equal(result.body.profiles[0].activityBusy,true);assert.equal(result.body.pickupPaused,true);assert.equal(result.body.roles[0].model,'auto');assert.equal(result.body.updates[0].text,'Planning');assert.equal(JSON.stringify(result.body).includes('secret'),false);
+ const skill=await api.handle({method:'GET',url:'/admin/ai/skill'});assert.equal(skill.status,200);assert.equal(skill.body.name,'bot-ranch-pm');assert.ok(skill.body.text.length>100);assert.ok(path.isAbsolute(skill.body.path));
+});
+test('PM operate validates new actions and preserves revisions and human review boundaries',async()=>{
+ const {createBridge}=await import('../sources/omp-bot-companion/server.mjs');const {RanchManager}=await import('../sources/omp-bot-companion/manager.mjs');const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ranch-pm-operate-')),admin='e'.repeat(64),manager=new RanchManager({dir,native:{}});const task=manager.saveTask({title:'PM task',projectFolder:dir,instructions:'Review work.',expectedRevision:0});
+ const server=createBridge({key:'f'.repeat(64),adminKey:admin,manager});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;const post=async body=>{const r=await fetch(base+'/admin/ai/operate',{method:'POST',headers:{Authorization:'Bearer '+admin,'Content-Type':'application/json'},body:JSON.stringify(body)});return {status:r.status,body:await r.json()};};
+ try{
+  for(const access of ['inspect','organize']){manager.setAiAccess(access);assert.equal((await post({action:'hold',taskId:task.id,expectedRevision:task.revision})).status,403);}
+  manager.setAiAccess('operate');
+  assert.equal((await post({action:'hold',taskId:task.id,expectedRevision:task.revision,extra:true})).status,400);
+  assert.equal((await post({action:'hold',taskId:task.id,expectedRevision:-1})).status,400);
+  const held=await post({action:'hold',taskId:task.id,expectedRevision:task.revision});assert.equal(held.status,200);assert.equal(held.body.releasedForPickup,false);
+  assert.equal((await post({action:'archive',taskId:task.id,expectedRevision:task.revision})).status,409);
+  let current=manager.tasks[0];current.status='review';current.humanReview=true;
+  assert.equal((await post({action:'accept',taskId:task.id,expectedRevision:current.revision})).status,403);assert.equal(current.status,'review');
+  current.humanReview=false;const accepted=await post({action:'accept',taskId:task.id,expectedRevision:current.revision});assert.equal(accepted.status,200);assert.equal(accepted.body.status,'done');assert.equal(accepted.body.acceptedBy,'agent');assert.equal(accepted.body.evidence.at(-1).kind,'agent-acceptance');
+  assert.equal((await post({action:'follow-up',taskId:task.id,expectedRevision:manager.tasks[0].revision,note:''})).status,400);
+  const follow=await post({action:'follow-up',taskId:task.id,expectedRevision:manager.tasks[0].revision,note:'Address the review finding.'});assert.equal(follow.status,200);assert.equal(follow.body.parentTaskId,task.id);assert.equal(follow.body.releasedForPickup,true);assert.deepEqual(follow.body.dependsOn,[task.id]);
+  const archived=await post({action:'archive',taskId:task.id,expectedRevision:manager.tasks[0].revision});assert.equal(archived.status,200);assert.equal(archived.body.archived,true);assert.equal(manager.tasks.length,2);
+ }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));fs.rmSync(dir,{recursive:true,force:true});}
+});
 test('authenticated ephemeral API enforces access and applies one staged transaction with durable receipt',async()=>{
  const {createAgentApi}=await import('../sources/omp-bot-companion/agent-api.mjs');const {RanchManager}=await import('../sources/omp-bot-companion/manager.mjs');const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ranch-ai-api-')),key='a'.repeat(64);const manager=new RanchManager({dir,native:{}});manager.aiState={access:'inspect',audit:[],receipts:{},familyPolicies:{}};
  let writes=0;const persistTransaction=async({tasks,taskRevision,aiState,familyPolicies})=>{const data={tasks,taskRevision,aiState:{...aiState,familyPolicies:familyPolicies||aiState.familyPolicies}};const file=path.join(dir,'ai-state.json'),tmp=file+'.tmp';fs.writeFileSync(tmp,JSON.stringify(data));fs.renameSync(tmp,file);manager.tasks=tasks;manager.taskRevision=taskRevision;manager.aiState=data.aiState;writes++;return {exportWarnings:[]};};

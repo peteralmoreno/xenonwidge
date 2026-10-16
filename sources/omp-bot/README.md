@@ -1,4 +1,4 @@
-# Bot Ranch 0.18.1
+# Bot Ranch 0.19.0
 
 Bot Ranch is a Large overhead ranch widget with an integrated Tasks view and bot details. It connects to one local companion that keeps resident profiles, project tasks, preferences, and existing terminal-session records. The widget's management workflow is designed for the Large layout; physical display fit still needs device validation.
 

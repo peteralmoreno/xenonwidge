@@ -1,4 +1,4 @@
-# Bot Ranch Central Companion 0.18.1
+# Bot Ranch Central Companion 0.19.0
 
 Run `Install botRanch.cmd` once. It installs under `%LOCALAPPDATA%\Programs\botRanch` and creates the **botRanch** Start menu shortcut. That shortcut opens the floating desktop dock and starts or reuses the companion. Use **Board** inside the sidebar. **Full Board**, **Settings**, **Connection & recovery**, and **AI Sync** open separate native windows. The installer keeps stable desktop and `botRanch-cli.cmd` launchers, both following the current release. Your selected bot home and existing settings remain separate. Active work blocks replacement.
 
@@ -69,3 +69,7 @@ Task families use a fixed palette and remain visually consistent across Workflow
 ## Pipeline and public status updates (0.13.0)
 
 Select Classic or Pipeline appearance independently of role. Pipeline API tasks submit once and monitor a saved external job without model calls, defaulting to sleep after one hour with five-minute checks. The widget Desk shows short bot status posts or an All updates feed; deliberate shaking requests a safe wake/work check. See [configuration, API contract, sleep/resume and status posts](../../docs/guides/bot-ranch-pipeline.md). Native managed /loop execution remains unavailable; the Board includes a bounded standalone command helper.
+
+## PM management skill
+
+Choose **Product Manager** as a bot role, then use **AI Sync** to choose Inspect, Organize or Operate access for the delegated work. Managed launches point to the bundled [bot-ranch-pm skill](skills/bot-ranch-pm/SKILL.md) and local CLI. **Copy PM skill** in AI Sync supports external agents; `botRanch-cli.cmd skill` works offline. The [AI Sync guide](../../docs/guides/bot-ranch-ai-sync.md) explains ticket creation, dependency chains, assignment, monitoring and lifecycle commands. Routine edits can follow existing user delegation; tasks marked Human review remain a human decision.

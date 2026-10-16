@@ -3,9 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readPmSkill } from './pm-skill.mjs';
+import { validateOperateRequest } from './agent-api.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const usage = 'Usage: botRanch-cli.cmd status|catalog|board [--json] | preview --file changes.json --actor label | apply --id CHANGESET_ID | release TASK_ID --revision N | start TASK_ID PROFILE_ID --revision N | ring';
+const usage = 'Usage: botRanch-cli.cmd skill|status|catalog|board|history|access [--json] | preview --file changes.json --actor label | apply --id CHANGESET_ID | operate --file action.json | release TASK_ID --revision N | start TASK_ID PROFILE_ID --revision N | ring';
 const validKey = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 
 function argumentsOf(argv) {
@@ -67,8 +69,23 @@ export async function runCli(argv = process.argv.slice(2), { env = process.env, 
   try {
     const parsed = argumentsOf(argv), { command, positional = [], options = {} } = parsed;
     if (command === 'help') { output(usage, streams); return 0; }
+    if (command === 'skill') {
+      if (positional.length || Object.keys(options).some(key => key !== 'json')) throw Error(usage);
+      const skill = readPmSkill(); output(options.json ? skill : skill.text, streams); return 0;
+    }
     const credentials = privateCredentials(env); secrets.push(credentials.adminKey);
     const emit = value => output(value, streams, secrets);
+    if (command === 'history' || command === 'access') {
+      if (positional.length || Object.keys(options).some(key => key !== 'json')) throw Error(usage);
+      emit(await request(credentials, 'GET', '/admin/ai/' + command, undefined, fetchImpl)); return 0;
+    }
+    if (command === 'operate') {
+      if (positional.length || !options.file || Object.keys(options).some(key => key !== 'file')) throw Error(usage);
+      let action;
+      try { action = JSON.parse(fs.readFileSync(options.file, 'utf8')); }
+      catch (error) { throw Error(`Could not read action at the supplied literal path: ${error.message}`); }
+      emit(await request(credentials, 'POST', '/admin/ai/operate', validateOperateRequest(action), fetchImpl)); return 0;
+    }
     if (command === 'status') {
       if (positional.length || Object.keys(options).some(key => key !== 'json')) throw Error(usage);
       emit(await request(credentials, 'GET', '/admin/health', undefined, fetchImpl)); return 0;
@@ -96,11 +113,11 @@ export async function runCli(argv = process.argv.slice(2), { env = process.env, 
     }
     if (command === 'release') {
       if (positional.length !== 1 || !options.revision || Object.keys(options).some(key => key !== 'revision') || !/^(0|[1-9]\d*)$/.test(options.revision)) throw Error(usage);
-      emit(await request(credentials, 'POST', '/admin/ai/operate', { action: 'release', taskId: positional[0], expectedRevision: Number(options.revision) }, fetchImpl)); return 0;
+      emit(await request(credentials, 'POST', '/admin/ai/operate', validateOperateRequest({ action: 'release', taskId: positional[0], expectedRevision: Number(options.revision) }), fetchImpl)); return 0;
     }
     if (command === 'start') {
       if (positional.length !== 2 || !options.revision || Object.keys(options).some(key => key !== 'revision') || !/^(0|[1-9]\d*)$/.test(options.revision)) throw Error(usage);
-      emit(await request(credentials, 'POST', '/admin/ai/operate', { action: 'start', taskId: positional[0], profileId: positional[1], expectedRevision: Number(options.revision) }, fetchImpl)); return 0;
+      emit(await request(credentials, 'POST', '/admin/ai/operate', validateOperateRequest({ action: 'start', taskId: positional[0], profileId: positional[1], expectedRevision: Number(options.revision) }), fetchImpl)); return 0;
     }
     if (command === 'ring') {
       if (positional.length || Object.keys(options).length) throw Error(usage);

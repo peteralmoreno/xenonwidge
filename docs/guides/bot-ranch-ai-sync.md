@@ -4,11 +4,35 @@ AI Sync gives a local agent a versioned interface to the same Board shown in bot
 
 Open **AI Sync** from the desktop sidebar to see the bot home, installed CLI invocation, catalog, access mode, preview, and recent change history. The default mode is **Inspect**. The mode is checked by the companion for every AI route, so disabling Apply in the window is not the permission boundary.
 
+## Let a PM coordinate the Board
+
+1. In **Factory**, create or edit a bot and choose the **Product Manager** role. PM design is optional and independent of the role. Existing custom role instructions are preserved.
+2. Open **AI Sync** and choose **Organize** for ticket/queue management, or **Operate** when the PM is also delegated to run work. Specify the project, desired outcome and scope to the PM; access mode alone is not a work instruction.
+3. Use **Copy instructions** for an external agent, or **Copy PM skill** for the complete workflow. Managed bot launches automatically include the installed skill and CLI paths. Existing sessions receive these instructions on their next safe launch.
+
+The bundled `skills/bot-ranch-pm/SKILL.md` is a portable agent skill. It can be read directly by any agent, or copied as a directory into that agent's supported skill location. No model/provider is hardcoded. `botRanch-cli.cmd skill` prints it even when the companion is offline; `skill --json` returns its installed path and text. The app does not silently modify unrelated agents' global configuration.
+
+A useful delegation is: **"Manage the Board for this project. Break the work into clear tickets, connect dependencies, assign suitable bots, and keep me informed of blockers. You may apply routine organizational edits. Hold new work until I ask you to run it; preserve tasks marked Human review."** To delegate execution too, say so explicitly. The PM can inspect previews and apply routine changes under that existing delegation without asking again for every ticket.
+
+### What the agent can do
+
+| Workflow | Supported interface |
+| --- | --- |
+| Inspect tasks, bot status/capabilities, roles, pickup state and updates | `board --json` / snapshot |
+| Discover exact schemas, types, enums and restrictions | `catalog --json` |
+| Read permissions and organizational receipts | `access --json`, `history --json` |
+| Create/edit held tickets, assign bots, reorder queues, set families/sticky rules and dependencies | Preview/apply change sets |
+| Release/start work, request idle work checks | `release`, `start`, `ring` in Operate mode |
+| Hold pending work, accept non-human-review results, create released follow-ups, archive history | Structured `operate --file action.json` in Operate mode |
+| Create/edit bots or roles, change membership, open/close terminals, delete records, or change access | Use the relevant app controls; these are not exposed by the AI operation catalog |
+
+All successful changes use the same manager and storage as the sidebar, Ranch Desk and full Board. PM reports are not a second task store. The snapshot includes only the bot/role metadata needed for management, not runtime tokens, binding files or raw conversations. Saved model preferences do not prove a provider will accept a request.
+
 ## Access modes
 
 - **Inspect** reads the snapshot and history and previews a change set. It cannot apply it.
 - **Organize** can create held drafts and edit pending task titles, instructions, acceptance criteria, requested reasoning, model eligibility, human review, family, dependencies, assignment, queue order, and sticky settings. New tasks remain `todo` and unreleased. Organizing does not start work or run an LLM.
-- **Operate** adds explicit release, start, and idle work-check requests through the manager's existing validation. A start still uses normal workspace, profile, model, runtime, and active-work checks.
+- **Operate** adds explicit release, start, hold, idle work checks and supported lifecycle actions through the manager's existing validation. A start still uses normal workspace, profile, model, runtime, and active-work checks. Holding a ticket is not an interruption. Human-review acceptance remains with the human.
 
 These modes limit application operations. They are not an operating-system sandbox: a local process running as the same user may be able to read that user's private files. The actor value in a change set is a caller-supplied display label, not a verified identity.
 
@@ -68,6 +92,20 @@ Explicit operate commands are:
 ```
 
 The companion rechecks the supplied revision and current runtime state. `release`, `start`, and `ring` require Operate mode. There are no catalog actions for deletion, shell commands, arbitrary file access, secret reading, permission changes, or companion restart.
+
+For a lifecycle action, save the exact object described in `catalog.operateActions` and run:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\botRanch\botRanch-cli.cmd" operate --file "D:\work\proposals\action.json"
+```
+
+For example, `{"action":"hold","taskId":"actual-id","expectedRevision":12}` holds pending work. A follow-up supplies `action`, `taskId`, `expectedRevision` and `note`; it is released automatically and waits on its parent, so the PM needs authorization to run follow-up work. Accept refuses any task marked Human review and records agent acceptance, not human approval. Archive retains history and does not finish prerequisites. Operate actions have no change-set receipt: after a timeout, re-read the Board before deciding whether to retry.
+
+## Dependencies and monitoring
+
+Create upstream drafts first, apply, and obtain their real IDs from the receipt or a fresh Board snapshot. Then create downstream drafts with those IDs in `dependsOn`. The catalog does not support temporary IDs or forward references. Use returned revisions for every new proposal; on conflict, re-read and reconcile rather than blindly replacing the revision number.
+
+The PM should use `waitingReason`, task attempts, bot status, pickup state and recent updates to explain why work is waiting. Family color is a visual relationship; only dependencies gate pickup. Idle/sleeping bots and expired external-job monitoring are not evidence that work finished. Continuous monitoring should have a bounded interval and stopping condition, not a tight polling loop. Reports should name affected task IDs, actual changes, current blockers and the next decision required.
 
 ## Suggested sweep prompt
 

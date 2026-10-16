@@ -19,6 +19,9 @@ test('release staging includes complete source UI and excludes private or genera
     assert.equal(require('node:child_process').spawnSync(path.join(output,'bin/Terminal-Control.exe'),['probe'],{encoding:'utf8',windowsHide:true}).stdout.trim(),'ready:1');
     assert.ok(JSON.parse(fs.readFileSync(path.join(output,'release.json'))).files.includes('bin/Terminal-Control.exe'));
     for (const file of ['pairing-key.txt', 'admin-key.txt', 'ranch.json', 'ranch-updates.json', '.env', 'unexpected.mjs', 'sessions']) assert.equal(fs.existsSync(path.join(output, file)), false, file);
+    const skillResult = require('node:child_process').spawnSync(process.execPath,[path.join(output,'ranch-cli.mjs'),'skill','--json'],{cwd:temporary,encoding:'utf8',windowsHide:true,env:{...process.env,OMP_BOT_KEY_FILE:path.join(temporary,'missing-credentials')}});
+    assert.equal(skillResult.status,0,skillResult.stderr);
+    const skill=JSON.parse(skillResult.stdout);assert.equal(skill.path,path.join(output,'skills/bot-ranch-pm/SKILL.md'));assert.ok(skill.text.includes('humanReview'));
     for (const file of ['pipeline.mjs','pipeline-manager.mjs','updates.mjs']) assert.ok(fs.statSync(path.join(output,file)).isFile(),file);
     for (const file of ['guides/bot-ranch-loop.md','guides/bot-ranch-pipeline.md']) assert.ok(fs.statSync(path.join(output,file)).isFile(),file);
     assert.ok(fs.readFileSync(path.join(output,'README.md'),'utf8').includes('(guides/bot-ranch-loop.md)'));
